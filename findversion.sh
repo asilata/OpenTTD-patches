@@ -70,7 +70,7 @@ if [ -d "$ROOT_DIR/.git" ]; then
 	SHORTHASH=`echo ${HASH} | cut -c1-8`
 	ISODATE=`LC_ALL=C git show -s --pretty='format:%ci' HEAD | "$AWK" '{ gsub("-", "", $1); print $1 }'`
 	BRANCH="`git symbolic-ref -q HEAD 2>/dev/null | sed 's@.*/@@'`"
-	TAG="`git describe --tags 2>/dev/null`"
+	TAG="`git describe --tags --abbrev=7 2>/dev/null`"
 
 	if [ -n "$TAG" ]; then
 		VERSION="${TAG}"
