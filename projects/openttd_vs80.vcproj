@@ -52,7 +52,7 @@
 				FavorSizeOrSpeed="2"
 				OmitFramePointers="true"
 				AdditionalIncludeDirectories="..\objs\langs;..\objs\settings;..\src\3rdparty\squirrel\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;WIN32_ENABLE_DIRECTMUSIC_SUPPORT;WITH_SSE;WITH_ZLIB;WITH_LZO;WITH_LZMA;LZMA_API_STATIC;WITH_PNG;WITH_FREETYPE;WITH_UNISCRIBE;ENABLE_NETWORK;WITH_PERSONAL_DIR;PERSONAL_DIR=\&quot;OpenTTD\&quot;;WITH_ASSERT"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;WIN32_ENABLE_DIRECTMUSIC_SUPPORT;WITH_SSE;WITH_ZLIB;WITH_LZO;WITH_LZMA;LZMA_API_STATIC;WITH_PNG;WITH_FREETYPE;WITH_ICU_SORT;WITH_ICU_LAYOUT;U_STATIC_IMPLEMENTATION;ENABLE_NETWORK;WITH_PERSONAL_DIR;PERSONAL_DIR=\&quot;OpenTTD\&quot;;WITH_ASSERT"
 				StringPooling="true"
 				ExceptionHandling="1"
 				RuntimeLibrary="0"
@@ -87,7 +87,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="winmm.lib ws2_32.lib imm32.lib libpng.lib zlibstat.lib lzo2.lib liblzma.lib libfreetype2.lib"
+				AdditionalDependencies="winmm.lib ws2_32.lib imm32.lib libpng.lib zlibstat.lib lzo2.lib liblzma.lib libfreetype2.lib icuuc.lib icuin.lib icudt.lib icule.lib iculx.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				IgnoreDefaultLibraryNames=""
@@ -158,7 +158,7 @@
 				AdditionalOptions="/MP"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\objs\langs;..\objs\settings;..\src\3rdparty\squirrel\include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;WIN32_ENABLE_DIRECTMUSIC_SUPPORT;WITH_SSE;WITH_ZLIB;WITH_LZO;WITH_LZMA;LZMA_API_STATIC;WITH_PNG;WITH_FREETYPE;WITH_UNISCRIBE;ENABLE_NETWORK;WITH_PERSONAL_DIR;PERSONAL_DIR=\&quot;OpenTTD\&quot;"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;WIN32_ENABLE_DIRECTMUSIC_SUPPORT;WITH_SSE;WITH_ZLIB;WITH_LZO;WITH_LZMA;LZMA_API_STATIC;WITH_PNG;WITH_FREETYPE;WITH_ICU_SORT;WITH_ICU_LAYOUT;U_STATIC_IMPLEMENTATION;ENABLE_NETWORK;WITH_PERSONAL_DIR;PERSONAL_DIR=\&quot;OpenTTD\&quot;"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
@@ -186,7 +186,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="winmm.lib ws2_32.lib imm32.lib libpng.lib zlibstat.lib lzo2.lib liblzma.lib libfreetype2.lib"
+				AdditionalDependencies="winmm.lib ws2_32.lib imm32.lib libpng.lib zlibstat.lib lzo2.lib liblzma.lib libfreetype2.lib icuuc.lib icuin.lib icudt.lib icule.lib iculx.lib"
 				LinkIncremental="0"
 				SuppressStartupBanner="true"
 				IgnoreDefaultLibraryNames="LIBCMT.lib"
@@ -261,7 +261,7 @@
 				FavorSizeOrSpeed="2"
 				OmitFramePointers="true"
 				AdditionalIncludeDirectories="..\objs\langs;..\objs\settings;..\src\3rdparty\squirrel\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;WIN32_ENABLE_DIRECTMUSIC_SUPPORT;WITH_SSE;WITH_ZLIB;WITH_LZO;WITH_LZMA;LZMA_API_STATIC;WITH_PNG;WITH_FREETYPE;WITH_UNISCRIBE;ENABLE_NETWORK;WITH_PERSONAL_DIR;PERSONAL_DIR=\&quot;OpenTTD\&quot;;_SQ64;WITH_ASSERT"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;WITH_SSE;WITH_ZLIB;WITH_LZO;WITH_LZMA;LZMA_API_STATIC;WITH_PNG;WITH_FREETYPE;WITH_ICU_SORT;WITH_ICU_LAYOUT;U_STATIC_IMPLEMENTATION;ENABLE_NETWORK;WITH_PERSONAL_DIR;PERSONAL_DIR=\&quot;OpenTTD\&quot;;_SQ64;WITH_ASSERT"
 				StringPooling="true"
 				ExceptionHandling="1"
 				RuntimeLibrary="0"
@@ -296,7 +296,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="winmm.lib ws2_32.lib imm32.lib libpng.lib zlibstat.lib lzo2.lib liblzma.lib libfreetype2.lib"
+				AdditionalDependencies="winmm.lib ws2_32.lib imm32.lib libpng.lib zlibstat.lib lzo2.lib liblzma.lib libfreetype2.lib icuuc.lib icuin.lib icudt.lib icule.lib iculx.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				IgnoreDefaultLibraryNames=""
@@ -368,7 +368,7 @@
 				AdditionalOptions="/MP"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\objs\langs;..\objs\settings;..\src\3rdparty\squirrel\include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;WIN32_ENABLE_DIRECTMUSIC_SUPPORT;WITH_SSE;WITH_ZLIB;WITH_LZO;WITH_LZMA;LZMA_API_STATIC;WITH_PNG;WITH_FREETYPE;WITH_UNISCRIBE;ENABLE_NETWORK;WITH_PERSONAL_DIR;PERSONAL_DIR=\&quot;OpenTTD\&quot;;_SQ64"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;WITH_SSE;WITH_ZLIB;WITH_LZO;WITH_LZMA;LZMA_API_STATIC;WITH_PNG;WITH_FREETYPE;WITH_ICU_SORT;WITH_ICU_LAYOUT;U_STATIC_IMPLEMENTATION;ENABLE_NETWORK;WITH_PERSONAL_DIR;PERSONAL_DIR=\&quot;OpenTTD\&quot;;_SQ64"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
@@ -398,7 +398,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="winmm.lib ws2_32.lib imm32.lib libpng.lib zlibstat.lib lzo2.lib liblzma.lib libfreetype2.lib"
+				AdditionalDependencies="winmm.lib ws2_32.lib imm32.lib libpng.lib zlibstat.lib lzo2.lib liblzma.lib libfreetype2.lib icuuc.lib icuin.lib icudt.lib icule.lib iculx.lib"
 				LinkIncremental="0"
 				SuppressStartupBanner="true"
 				IgnoreDefaultLibraryNames="LIBCMT.lib"
@@ -442,38 +442,6 @@
 		<Filter
 			Name="Source Files"
 			>
-			<File
-				RelativePath=".\..\src\tbtr_template_gui_main.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tbtr_template_gui_create.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tbtr_template_vehicle.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tbtr_template_vehicle_func.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tbtr_template_gui_main.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tbtr_template_gui_create.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tbtr_template_vehicle.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tbtr_template_vehicle_func.h"
-				>
-			</File>
 			<File
 				RelativePath=".\..\src\airport.cpp"
 				>
@@ -551,19 +519,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\departures.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\depot.cpp"
 				>
 			</File>
 			<File
 				RelativePath=".\..\src\disaster_vehicle.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\dock.cpp"
 				>
 			</File>
 			<File
@@ -640,10 +600,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\highscore.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\infrastructure.cpp"
 				>
 			</File>
 			<File
@@ -751,10 +707,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\plans.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\progress.cpp"
 				>
 			</File>
@@ -788,14 +740,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\signal.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\programmable_signals.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\programmable_signals_gui.cpp"
 				>
 			</File>
 			<File
@@ -1043,10 +987,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\crashlog_bfd.h"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\currency.h"
 				>
 			</File>
@@ -1068,18 +1008,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\video\dedicated_v.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\departures_func.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\departures_gui.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\departures_type.h"
 				>
 			</File>
 			<File
@@ -1112,10 +1040,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\music\dmusic.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\dock_base.h"
 				>
 			</File>
 			<File
@@ -1184,10 +1108,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\fontdetection.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\framerate_type.h"
 				>
 			</File>
 			<File
@@ -1284,10 +1204,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\industrytype.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\infrastructure_func.h"
 				>
 			</File>
 			<File
@@ -1547,14 +1463,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\music\midi.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\music\midifile.hpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\music\null_m.h"
 				>
 			</File>
@@ -1591,10 +1499,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\order_cmd.h"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\order_func.h"
 				>
 			</File>
@@ -1604,18 +1508,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\pbs.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\plans_base.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\plans_func.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\plans_type.h"
 				>
 			</File>
 			<File
@@ -1695,10 +1587,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\schdispatch.h"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\settings_func.h"
 				>
 			</File>
@@ -1727,10 +1615,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\programmable_signals.h"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\signs_base.h"
 				>
 			</File>
@@ -1748,10 +1632,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\slope_type.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\smallmap_colours.h"
 				>
 			</File>
 			<File
@@ -1823,15 +1703,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\string_func_extra.h"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\string_type.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\os\windows\string_uniscribe.h"
 				>
 			</File>
 			<File
@@ -1927,10 +1799,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\town_gui.h"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\town_type.h"
 				>
 			</File>
@@ -1968,10 +1836,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\tunnelbridge.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tunnel_base.h"
 				>
 			</File>
 			<File
@@ -2039,10 +1903,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\unit_conversion.h"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\video\win32_v.h"
 				>
 			</File>
@@ -2059,19 +1919,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\sound\xaudio2_s.h"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\zoom_func.h"
 				>
 			</File>
 			<File
 				RelativePath=".\..\src\zoom_type.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\zoning.h"
 				>
 			</File>
 		</Filter>
@@ -2243,10 +2095,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\departures_gui.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\depot_gui.cpp"
 				>
 			</File>
@@ -2264,10 +2112,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\fios_gui.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\framerate_gui.cpp"
 				>
 			</File>
 			<File
@@ -2351,10 +2195,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\plans_gui.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\rail_gui.cpp"
 				>
 			</File>
@@ -2364,10 +2204,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\roadveh_gui.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\schdispatch_gui.cpp"
 				>
 			</File>
 			<File
@@ -2446,10 +2282,6 @@
 				RelativePath=".\..\src\waypoint_gui.cpp"
 				>
 			</File>
-			<File
-				RelativePath=".\..\src\zoning_gui.cpp"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Widgets"
@@ -2495,10 +2327,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\widgets\departures_widget.h"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\widgets\depot_widget.h"
 				>
 			</File>
@@ -2532,10 +2360,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\widgets\fios_widget.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\widgets\framerate_widget.h"
 				>
 			</File>
 			<File
@@ -2616,10 +2440,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\widgets\osk_widget.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\widgets\plans_widget.h"
 				>
 			</File>
 			<File
@@ -2739,10 +2559,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\plans_cmd.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\rail_cmd.cpp"
 				>
 			</File>
@@ -2752,10 +2568,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\roadveh_cmd.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\schdispatch_cmd.cpp"
 				>
 			</File>
 			<File
@@ -2808,10 +2620,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\waypoint_cmd.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\zoning_cmd.cpp"
 				>
 			</File>
 		</Filter>
@@ -2931,10 +2739,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\saveload\plans_sl.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\saveload\saveload.cpp"
 				>
 			</File>
@@ -2983,10 +2787,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\saveload\tunnel_sl.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\saveload\vehicle_sl.cpp"
 				>
 			</File>
@@ -2995,27 +2795,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\saveload\signal_sl.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\saveload\extended_ver_sl.h"
 				>
 			</File>
 			<File
 				RelativePath=".\..\src\saveload\extended_ver_sl.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\saveload\tbtr_template_replacement_sl.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\saveload\tbtr_template_veh_sl.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\saveload\bridge_signal_sl.cpp"
 				>
 			</File>
 		</Filter>
@@ -3064,10 +2848,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\table\control_codes.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\table\darklight_colours.h"
 				>
 			</File>
 			<File
@@ -4083,14 +3863,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\blitter\32bpp_anim_sse2.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\blitter\32bpp_anim_sse2.hpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\blitter\32bpp_anim_sse4.cpp"
 				>
 			</File>
@@ -4176,6 +3948,10 @@
 			</File>
 			<File
 				RelativePath=".\..\src\blitter\8bpp_simple.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\..\src\blitter\base.cpp"
 				>
 			</File>
 			<File
@@ -4324,10 +4100,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\bridge_map.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\bridge_signal_map.h"
 				>
 			</File>
 			<File
@@ -4711,10 +4483,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\..\src\music\midifile.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\..\src\music\win32_m.cpp"
 				>
 			</File>
@@ -4734,10 +4502,6 @@
 				RelativePath=".\..\src\sound\win32_s.cpp"
 				>
 			</File>
-			<File
-				RelativePath=".\..\src\sound\xaudio2_s.cpp"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Windows files"
@@ -4748,10 +4512,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\os\windows\ottdres.rc"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\os\windows\string_uniscribe.cpp"
 				>
 			</File>
 			<File
@@ -4768,62 +4528,6 @@
 			</File>
 			<File
 				RelativePath=".\..\src\thread\thread_win32.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tracerestrict.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tracerestrict.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\tracerestrict_gui.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\saveload\tracerestrict_sl.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\scope_info.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\scope_info.h"
-				>
-			</File>
-		</Filter>
-		<Filter
-			Name="Btree containers"
-			>
-			<File
-				RelativePath=".\..\src\3rdparty\cpp-btree\btree.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\3rdparty\cpp-btree\btree_container.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\3rdparty\cpp-btree\btree_map.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\3rdparty\cpp-btree\btree_set.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\3rdparty\cpp-btree\safe_btree.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\3rdparty\cpp-btree\safe_btree_map.h"
-				>
-			</File>
-			<File
-				RelativePath=".\..\src\3rdparty\cpp-btree\safe_btree_set.h"
 				>
 			</File>
 		</Filter>

@@ -100,35 +100,8 @@
     <Filter Include="Threading">
       <UniqueIdentifier>{c76ff9f1-1e62-46d8-8d55-000000000032}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Btree containers">
-      <UniqueIdentifier>{c76ff9f1-1e62-46d8-8d55-000000000033}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\tbtr_template_gui_main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\tbtr_template_gui_create.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\tbtr_template_vehicle.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\tbtr_template_vehicle_func.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClInclude Include="..\src\tbtr_template_gui_main.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\tbtr_template_gui_create.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\tbtr_template_vehicle.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\tbtr_template_vehicle_func.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClCompile Include="..\src\airport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -186,16 +159,10 @@
     <ClCompile Include="..\src\dedicated.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\departures.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\depot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\disaster_vehicle.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\dock.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\driver.cpp">
@@ -253,9 +220,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\highscore.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\infrastructure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\hotkeys.cpp">
@@ -336,9 +300,6 @@
     <ClCompile Include="..\src\pbs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\plans.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\progress.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -364,12 +325,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\signal.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\programmable_signals.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\programmable_signals_gui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\signs.cpp">
@@ -552,9 +507,6 @@
     <ClInclude Include="..\src\crashlog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\crashlog_bfd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\currency.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -571,15 +523,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\video\dedicated_v.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\departures_func.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\departures_gui.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\departures_type.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\depot_base.h">
@@ -604,9 +547,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\music\dmusic.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\dock_base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\driver.h">
@@ -658,9 +598,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\fontdetection.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\framerate_type.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\base_consist.h">
@@ -733,9 +670,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\industrytype.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\infrastructure_func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\ini_type.h">
@@ -930,12 +864,6 @@
     <ClInclude Include="..\src\news_type.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\music\midi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\music\midifile.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\music\null_m.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -963,9 +891,6 @@
     <ClInclude Include="..\src\order_base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\order_cmd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\order_func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -973,15 +898,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\pbs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\plans_base.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\plans_func.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\plans_type.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\progress.h">
@@ -1041,9 +957,6 @@
     <ClInclude Include="..\src\video\sdl_v.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\schdispatch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\settings_func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1065,9 +978,6 @@
     <ClInclude Include="..\src\signal_type.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\programmable_signals.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\signs_base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1081,9 +991,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\slope_type.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\smallmap_colours.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\smallmap_gui.h">
@@ -1137,13 +1044,7 @@
     <ClInclude Include="..\src\string_func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\string_func_extra.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\string_type.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\os\windows\string_uniscribe.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\stringfilter_type.h">
@@ -1215,9 +1116,6 @@
     <ClInclude Include="..\src\town.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\town_gui.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\town_type.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1246,9 +1144,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\tunnelbridge.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\tunnel_base.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\vehicle_base.h">
@@ -1299,9 +1194,6 @@
     <ClInclude Include="..\src\sound\win32_s.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\unit_conversion.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\video\win32_v.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1314,16 +1206,10 @@
     <ClInclude Include="..\src\window_type.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\sound\xaudio2_s.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\zoom_func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\zoom_type.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\zoning.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClCompile Include="..\src\core\alloc_func.cpp">
@@ -1446,9 +1332,6 @@
     <ClCompile Include="..\src\date_gui.cpp">
       <Filter>GUI Source Code</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\departures_gui.cpp">
-      <Filter>GUI Source Code</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\depot_gui.cpp">
       <Filter>GUI Source Code</Filter>
     </ClCompile>
@@ -1462,9 +1345,6 @@
       <Filter>GUI Source Code</Filter>
     </ClCompile>
     <ClCompile Include="..\src\fios_gui.cpp">
-      <Filter>GUI Source Code</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\framerate_gui.cpp">
       <Filter>GUI Source Code</Filter>
     </ClCompile>
     <ClCompile Include="..\src\genworld_gui.cpp">
@@ -1527,9 +1407,6 @@
     <ClCompile Include="..\src\osk_gui.cpp">
       <Filter>GUI Source Code</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\plans_gui.cpp">
-      <Filter>GUI Source Code</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\rail_gui.cpp">
       <Filter>GUI Source Code</Filter>
     </ClCompile>
@@ -1537,9 +1414,6 @@
       <Filter>GUI Source Code</Filter>
     </ClCompile>
     <ClCompile Include="..\src\roadveh_gui.cpp">
-      <Filter>GUI Source Code</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\schdispatch_gui.cpp">
       <Filter>GUI Source Code</Filter>
     </ClCompile>
     <ClCompile Include="..\src\settings_gui.cpp">
@@ -1599,9 +1473,6 @@
     <ClCompile Include="..\src\waypoint_gui.cpp">
       <Filter>GUI Source Code</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\zoning_gui.cpp">
-      <Filter>GUI Source Code</Filter>
-    </ClCompile>
     <ClInclude Include="..\src\widgets\airport_widget.h">
       <Filter>Widgets</Filter>
     </ClInclude>
@@ -1632,9 +1503,6 @@
     <ClInclude Include="..\src\widgets\date_widget.h">
       <Filter>Widgets</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\widgets\departures_widget.h">
-      <Filter>Widgets</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\widgets\depot_widget.h">
       <Filter>Widgets</Filter>
     </ClInclude>
@@ -1660,9 +1528,6 @@
       <Filter>Widgets</Filter>
     </ClInclude>
     <ClInclude Include="..\src\widgets\fios_widget.h">
-      <Filter>Widgets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\widgets\framerate_widget.h">
       <Filter>Widgets</Filter>
     </ClInclude>
     <ClInclude Include="..\src\widgets\genworld_widget.h">
@@ -1723,9 +1588,6 @@
       <Filter>Widgets</Filter>
     </ClInclude>
     <ClInclude Include="..\src\widgets\osk_widget.h">
-      <Filter>Widgets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\widgets\plans_widget.h">
       <Filter>Widgets</Filter>
     </ClInclude>
     <ClInclude Include="..\src\widgets\rail_widget.h">
@@ -1812,9 +1674,6 @@
     <ClCompile Include="..\src\order_cmd.cpp">
       <Filter>Command handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\plans_cmd.cpp">
-      <Filter>Command handlers</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\rail_cmd.cpp">
       <Filter>Command handlers</Filter>
     </ClCompile>
@@ -1822,9 +1681,6 @@
       <Filter>Command handlers</Filter>
     </ClCompile>
     <ClCompile Include="..\src\roadveh_cmd.cpp">
-      <Filter>Command handlers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\schdispatch_cmd.cpp">
       <Filter>Command handlers</Filter>
     </ClCompile>
     <ClCompile Include="..\src\ship_cmd.cpp">
@@ -1864,9 +1720,6 @@
       <Filter>Command handlers</Filter>
     </ClCompile>
     <ClCompile Include="..\src\waypoint_cmd.cpp">
-      <Filter>Command handlers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\zoning_cmd.cpp">
       <Filter>Command handlers</Filter>
     </ClCompile>
     <ClCompile Include="..\src\saveload\afterload.cpp">
@@ -1953,9 +1806,6 @@
     <ClCompile Include="..\src\saveload\order_sl.cpp">
       <Filter>Save/Load handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\saveload\plans_sl.cpp">
-      <Filter>Save/Load handlers</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\saveload\saveload.cpp">
       <Filter>Save/Load handlers</Filter>
     </ClCompile>
@@ -1992,31 +1842,16 @@
     <ClCompile Include="..\src\saveload\town_sl.cpp">
       <Filter>Save/Load handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\saveload\tunnel_sl.cpp">
-      <Filter>Save/Load handlers</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\saveload\vehicle_sl.cpp">
       <Filter>Save/Load handlers</Filter>
     </ClCompile>
     <ClCompile Include="..\src\saveload\waypoint_sl.cpp">
       <Filter>Save/Load handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\saveload\signal_sl.cpp">
-      <Filter>Save/Load handlers</Filter>
-    </ClCompile>
     <ClInclude Include="..\src\saveload\extended_ver_sl.h">
       <Filter>Save/Load handlers</Filter>
     </ClInclude>
     <ClCompile Include="..\src\saveload\extended_ver_sl.cpp">
-      <Filter>Save/Load handlers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\saveload\tbtr_template_replacement_sl.cpp">
-      <Filter>Save/Load handlers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\saveload\tbtr_template_veh_sl.cpp">
-      <Filter>Save/Load handlers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\saveload\bridge_signal_sl.cpp">
       <Filter>Save/Load handlers</Filter>
     </ClCompile>
     <ClInclude Include="..\src\table\airport_defaults.h">
@@ -2050,9 +1885,6 @@
       <Filter>Tables</Filter>
     </ClInclude>
     <ClInclude Include="..\src\table\control_codes.h">
-      <Filter>Tables</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\table\darklight_colours.h">
       <Filter>Tables</Filter>
     </ClInclude>
     <ClInclude Include="..\src\table\elrail_data.h">
@@ -2781,12 +2613,6 @@
     <ClInclude Include="..\src\blitter\32bpp_anim.hpp">
       <Filter>Blitters</Filter>
     </ClInclude>
-    <ClCompile Include="..\src\blitter\32bpp_anim_sse2.cpp">
-      <Filter>Blitters</Filter>
-    </ClCompile>
-    <ClInclude Include="..\src\blitter\32bpp_anim_sse2.hpp">
-      <Filter>Blitters</Filter>
-    </ClInclude>
     <ClCompile Include="..\src\blitter\32bpp_anim_sse4.cpp">
       <Filter>Blitters</Filter>
     </ClCompile>
@@ -2853,6 +2679,9 @@
     <ClInclude Include="..\src\blitter\8bpp_simple.hpp">
       <Filter>Blitters</Filter>
     </ClInclude>
+    <ClCompile Include="..\src\blitter\base.cpp">
+      <Filter>Blitters</Filter>
+    </ClCompile>
     <ClInclude Include="..\src\blitter\base.hpp">
       <Filter>Blitters</Filter>
     </ClInclude>
@@ -2950,9 +2779,6 @@
       <Filter>Map Accessors</Filter>
     </ClCompile>
     <ClInclude Include="..\src\bridge_map.h">
-      <Filter>Map Accessors</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\bridge_signal_map.h">
       <Filter>Map Accessors</Filter>
     </ClInclude>
     <ClInclude Include="..\src\clear_map.h">
@@ -3219,9 +3045,6 @@
     <ClCompile Include="..\src\music\null_m.cpp">
       <Filter>Music</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\music\midifile.cpp">
-      <Filter>Music</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\music\win32_m.cpp">
       <Filter>Music</Filter>
     </ClCompile>
@@ -3234,18 +3057,12 @@
     <ClCompile Include="..\src\sound\win32_s.cpp">
       <Filter>Sound</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\sound\xaudio2_s.cpp">
-      <Filter>Sound</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\os\windows\crashlog_win.cpp">
       <Filter>Windows files</Filter>
     </ClCompile>
     <ResourceCompile Include="..\src\os\windows\ottdres.rc">
       <Filter>Windows files</Filter>
     </ResourceCompile>
-    <ClCompile Include="..\src\os\windows\string_uniscribe.cpp">
-      <Filter>Windows files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\os\windows\win32.cpp">
       <Filter>Windows files</Filter>
     </ClCompile>
@@ -3255,45 +3072,6 @@
     <ClCompile Include="..\src\thread\thread_win32.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
-    <ClInclude Include="..\src\tracerestrict.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
-    <ClCompile Include="..\src\tracerestrict.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\tracerestrict_gui.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\saveload\tracerestrict_sl.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\scope_info.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
-    <ClInclude Include="..\src\scope_info.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\3rdparty\cpp-btree\btree.h">
-      <Filter>Btree containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\3rdparty\cpp-btree\btree_container.h">
-      <Filter>Btree containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\3rdparty\cpp-btree\btree_map.h">
-      <Filter>Btree containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\3rdparty\cpp-btree\btree_set.h">
-      <Filter>Btree containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\3rdparty\cpp-btree\safe_btree.h">
-      <Filter>Btree containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\3rdparty\cpp-btree\safe_btree_map.h">
-      <Filter>Btree containers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\3rdparty\cpp-btree\safe_btree_set.h">
-      <Filter>Btree containers</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\media\openttd.ico" />

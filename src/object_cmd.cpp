@@ -158,12 +158,11 @@ void UpdateCompanyHQ(TileIndex tile, uint score)
 {
 	if (tile == INVALID_TILE) return;
 
-	byte val;
-	(val = 0, score < 170) ||
-	(val++, score < 350) ||
-	(val++, score < 520) ||
-	(val++, score < 720) ||
-	(val++, true);
+	byte val = 0;
+	if (score >= 170) val++;
+	if (score >= 350) val++;
+	if (score >= 520) val++;
+	if (score >= 720) val++;
 
 	while (GetCompanyHQSize(tile) < val) {
 		IncreaseCompanyHQSize(tile);
@@ -226,6 +225,7 @@ CommandCost CmdBuildObject(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 	TileArea ta(tile, size_x, size_y);
 
 	if (type == OBJECT_OWNED_LAND) {
+		if (_settings_game.construction.purchase_land_permitted == 0) return_cmd_error(STR_PURCHASE_LAND_NOT_PERMITTED);
 		/* Owned land is special as it can be placed on any slope. */
 		cost.AddCost(DoCommand(tile, 0, 0, flags, CMD_LANDSCAPE_CLEAR));
 	} else {
@@ -305,6 +305,7 @@ CommandCost CmdBuildObject(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 	}
 
 	int hq_score = 0;
+	Company *c = nullptr;
 	switch (type) {
 		case OBJECT_TRANSMITTER:
 		case OBJECT_LIGHTHOUSE:
@@ -316,6 +317,10 @@ CommandCost CmdBuildObject(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 					IsTileOwner(tile, _current_company) &&
 					IsObjectType(tile, OBJECT_OWNED_LAND)) {
 				return_cmd_error(STR_ERROR_YOU_ALREADY_OWN_IT);
+			}
+			c = Company::GetIfValid(_current_company);
+			if (c != NULL && (int)GB(c->purchase_land_limit, 16, 16) < 1) {
+				return_cmd_error(STR_ERROR_PURCHASE_LAND_LIMIT_REACHED);
 			}
 			break;
 
@@ -349,10 +354,68 @@ CommandCost CmdBuildObject(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 
 		/* Make sure the HQ starts at the right size. */
 		if (type == OBJECT_HQ) UpdateCompanyHQ(tile, hq_score);
+
+		if (type == OBJECT_OWNED_LAND && c != NULL) c->purchase_land_limit -= 1 << 16;
 	}
 
 	cost.AddCost(ObjectSpec::Get(type)->GetBuildCost() * size_x * size_y);
 	return cost;
+}
+
+/**
+ * Buy a big piece of landscape
+ * @param tile end tile of area dragging
+ * @param flags of operation to conduct
+ * @param p1 start tile of area dragging
+ * @param p2 various bitstuffed data.
+ *  bit      0: Whether to use the Orthogonal (0) or Diagonal (1) iterator.
+ * @param text unused
+ * @return the cost of this operation or an error
+ */
+CommandCost CmdPurchaseLandArea(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text)
+{
+	if (p1 >= MapSize()) return CMD_ERROR;
+	if (_settings_game.construction.purchase_land_permitted == 0) return_cmd_error(STR_PURCHASE_LAND_NOT_PERMITTED);
+	if (_settings_game.construction.purchase_land_permitted != 2) return_cmd_error(STR_PURCHASE_LAND_NOT_PERMITTED_BULK);
+
+	Money money = GetAvailableMoneyForCommand();
+	CommandCost cost(EXPENSES_CONSTRUCTION);
+	CommandCost last_error = CMD_ERROR;
+	bool had_success = false;
+
+	const Company *c = Company::GetIfValid(_current_company);
+	int limit = (c == NULL ? INT32_MAX : GB(c->purchase_land_limit, 16, 16));
+
+	TileIterator *iter = HasBit(p2, 0) ? (TileIterator *)new DiagonalTileIterator(tile, p1) : new OrthogonalTileIterator(tile, p1);
+	for (; *iter != INVALID_TILE; ++(*iter)) {
+		TileIndex t = *iter;
+		CommandCost ret = DoCommand(t, OBJECT_OWNED_LAND, 0, flags & ~DC_EXEC, CMD_BUILD_OBJECT);
+		if (ret.Failed()) {
+			last_error = ret;
+
+			/* We may not clear more tiles. */
+			if (c != NULL && GB(c->purchase_land_limit, 16, 16) < 1) break;
+			continue;
+		}
+
+		had_success = true;
+		if (flags & DC_EXEC) {
+			money -= ret.GetCost();
+			if (ret.GetCost() > 0 && money < 0) {
+				_additional_cash_required = ret.GetCost();
+				delete iter;
+				return cost;
+			}
+			DoCommand(t, OBJECT_OWNED_LAND, 0, flags, CMD_BUILD_OBJECT);
+		} else {
+			/* When we're at the clearing limit we better bail (unneed) testing as well. */
+			if (ret.GetCost() != 0 && --limit <= 0) break;
+		}
+		cost.AddCost(ret);
+	}
+
+	delete iter;
+	return had_success ? cost : last_error;
 }
 
 
@@ -445,7 +508,7 @@ static void ReallyClearObjectTile(Object *o)
 	delete o;
 }
 
-SmallVector<ClearedObjectArea, 4> _cleared_object_areas;
+std::vector<ClearedObjectArea> _cleared_object_areas;
 
 /**
  * Find the entry in _cleared_object_areas which occupies a certain tile.
@@ -456,9 +519,8 @@ ClearedObjectArea *FindClearedObject(TileIndex tile)
 {
 	TileArea ta = TileArea(tile, 1, 1);
 
-	const ClearedObjectArea *end = _cleared_object_areas.End();
-	for (ClearedObjectArea *coa = _cleared_object_areas.Begin(); coa != end; coa++) {
-		if (coa->area.Intersects(ta)) return coa;
+	for (ClearedObjectArea &coa : _cleared_object_areas) {
+		if (coa.area.Intersects(ta)) return &coa;
 	}
 
 	return NULL;
@@ -533,9 +595,7 @@ static CommandCost ClearTile_Object(TileIndex tile, DoCommandFlag flags)
 			break;
 	}
 
-	ClearedObjectArea *cleared_area = _cleared_object_areas.Append();
-	cleared_area->first_tile = tile;
-	cleared_area->area = ta;
+	_cleared_object_areas.push_back({tile, ta});
 
 	if (flags & DC_EXEC) ReallyClearObjectTile(o);
 
@@ -632,7 +692,7 @@ static bool ClickTile_Object(TileIndex tile)
 	return true;
 }
 
-static void AnimateTile_Object(TileIndex tile)
+void AnimateTile_Object(TileIndex tile)
 {
 	AnimateNewObjectTile(tile);
 }

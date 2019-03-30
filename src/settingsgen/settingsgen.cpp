@@ -18,17 +18,10 @@
 
 #include <stdarg.h>
 
-#if (!defined(WIN32) && !defined(WIN64)) || defined(__CYGWIN__)
+#if !defined(_WIN32) || defined(__CYGWIN__)
 #include <unistd.h>
 #include <sys/stat.h>
 #endif
-
-#ifdef __MORPHOS__
-#ifdef stderr
-#undef stderr
-#endif
-#define stderr stdout
-#endif /* __MORPHOS__ */
 
 #include "../safeguards.h"
 
@@ -110,7 +103,7 @@ public:
 	/** Clear the temporary storage. */
 	void Clear()
 	{
-		this->output_buffer.Clear();
+		this->output_buffer.clear();
 	}
 
 	/**
@@ -123,14 +116,15 @@ public:
 		if (length == 0) length = strlen(text);
 
 		if (length > 0 && this->BufferHasRoom()) {
-			int stored_size = this->output_buffer[this->output_buffer.Length() - 1].Add(text, length);
+			int stored_size = this->output_buffer[this->output_buffer.size() - 1].Add(text, length);
 			length -= stored_size;
 			text += stored_size;
 		}
 		while (length > 0) {
-			OutputBuffer *block = this->output_buffer.Append();
-			block->Clear(); // Initialize the new block.
-			int stored_size = block->Add(text, length);
+			/*C++17: OutputBuffer &block =*/ this->output_buffer.emplace_back();
+			OutputBuffer &block = this->output_buffer.back();
+			block.Clear(); // Initialize the new block.
+			int stored_size = block.Add(text, length);
 			length -= stored_size;
 			text += stored_size;
 		}
@@ -142,8 +136,8 @@ public:
 	 */
 	void Write(FILE *out_fp) const
 	{
-		for (const OutputBuffer *out_data = this->output_buffer.Begin(); out_data != this->output_buffer.End(); out_data++) {
-			out_data->Write(out_fp);
+		for (const OutputBuffer &out_data : output_buffer) {
+			out_data.Write(out_fp);
 		}
 	}
 
@@ -154,11 +148,11 @@ private:
 	 */
 	bool BufferHasRoom() const
 	{
-		uint num_blocks = this->output_buffer.Length();
+		uint num_blocks = this->output_buffer.size();
 		return num_blocks > 0 && this->output_buffer[num_blocks - 1].HasRoom();
 	}
 
-	typedef SmallVector<OutputBuffer, 2> OutputBufferVector; ///< Vector type for output buffers.
+	typedef std::vector<OutputBuffer> OutputBufferVector; ///< Vector type for output buffers.
 	OutputBufferVector output_buffer; ///< Vector of blocks containing the stored output.
 };
 
@@ -205,7 +199,6 @@ static const char *DEFAULTS_GROUP_NAME  = "defaults";   ///< Name of the group c
 /**
  * Load the INI file.
  * @param filename Name of the file to load.
- * @param subdir   The subdirectory to load from.
  * @return         Loaded INI data.
  */
 static IniLoadFile *LoadIniFile(const char *filename)
@@ -372,7 +365,10 @@ static bool CompareFiles(const char *n1, const char *n2)
 	if (f2 == NULL) return false;
 
 	FILE *f1 = fopen(n1, "rb");
-	if (f1 == NULL) error("can't open %s", n1);
+	if (f1 == NULL) {
+		fclose(f2);
+		error("can't open %s", n1);
+	}
 
 	size_t l1, l2;
 	do {
@@ -413,12 +409,12 @@ static const OptionData _opts[] = {
  * After loading, the [pre-amble] group is copied verbatim if it exists.
  *
  * For every group with a name that matches a template name the template is written.
- * It starts with a optional '#if' line if an 'if' item exists in the group. The item
- * value is used as condition. Similarly, '#ifdef' and '#ifndef' lines are also written.
+ * It starts with a optional \c \#if line if an 'if' item exists in the group. The item
+ * value is used as condition. Similarly, \c \#ifdef and \c \#ifndef lines are also written.
  * Below the macro processor directives, the value of the template is written
  * at a line with its variables replaced by item values of the group being written.
  * If the group has no item for the variable, the [defaults] group is tried as fall back.
- * Finally, '#endif' lines are written to match the macro processor lines.
+ * Finally, \c \#endif lines are written to match the macro processor lines.
  *
  * Last but not least, the [post-amble] group is copied verbatim.
  *
@@ -510,7 +506,7 @@ int CDECL main(int argc, char *argv[])
 			unlink(tmp_output);
 		} else {
 			/* Rename tmp2.xxx to output file. */
-#if defined(WIN32) || defined(WIN64)
+#if defined(_WIN32)
 			unlink(output_file);
 #endif
 			if (rename(tmp_output, output_file) == -1) error("rename() failed");

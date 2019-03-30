@@ -93,7 +93,7 @@ struct GroundVehicle : public SpecializedVehicle<T, Type> {
 
 	void PowerChanged();
 	void CargoChanged();
-	bool IsChainInDepot() const;
+	bool IsChainInDepot() const override;
 
 	void CalculatePower(uint32& power, uint32& max_te, bool breakdowns) const;
 
@@ -104,7 +104,7 @@ struct GroundVehicle : public SpecializedVehicle<T, Type> {
 	 * @param flooded was this vehicle flooded?
 	 * @return number of victims
 	 */
-	/* virtual */ uint Crash(bool flooded)
+	uint Crash(bool flooded) override
 	{
 		/* Crashed vehicles aren't going up or down */
 		for (T *v = T::From(this); v != NULL; v = v->Next()) {
@@ -118,8 +118,10 @@ struct GroundVehicle : public SpecializedVehicle<T, Type> {
 	 * Calculates the total slope resistance for this vehicle.
 	 * @return Slope resistance.
 	 */
-	inline int64 GetSlopeResistance() const
+	inline int64 GetSlopeResistance()
 	{
+		if (likely(HasBit(this->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST))) return 0;
+
 		int64 incl = 0;
 
 		for (const T *u = T::From(this); u != NULL; u = u->Next()) {
@@ -129,6 +131,7 @@ struct GroundVehicle : public SpecializedVehicle<T, Type> {
 				incl -= u->gcache.cached_slope_resistance;
 			}
 		}
+		if (incl == 0) SetBit(this->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST);
 
 		return incl;
 	}
@@ -154,6 +157,7 @@ struct GroundVehicle : public SpecializedVehicle<T, Type> {
 
 			if (middle_z != this->z_pos) {
 				SetBit(this->gv_flags, (middle_z > this->z_pos) ? GVF_GOINGUP_BIT : GVF_GOINGDOWN_BIT);
+				ClrBit(this->First()->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST);
 			}
 		}
 	}
@@ -365,6 +369,24 @@ struct GroundVehicle : public SpecializedVehicle<T, Type> {
 	 * @return True if the engine is the rear part of a dualheaded engine.
 	 */
 	inline bool IsRearDualheaded() const { return this->IsMultiheaded() && !this->IsEngine(); }
+
+	/**
+	 * Check if the vehicle is a front engine.
+	 * @return Returns true if the vehicle is a front engine.
+	 */
+	inline bool IsFrontEngine() const
+	{
+		return HasBit(this->subtype, GVSF_FRONT);
+	}
+
+	/**
+	 * Check if the vehicle is an articulated part of an engine.
+	 * @return Returns true if the vehicle is an articulated part.
+	 */
+	inline bool IsArticulatedPart() const
+	{
+		return HasBit(this->subtype, GVSF_ARTICULATED_PART);
+	}
 
 	/**
 	 * Update the GUI variant of the current speed of the vehicle.

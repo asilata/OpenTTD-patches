@@ -105,6 +105,11 @@ static void _GenerateWorld(void *)
 		/* Set the Random() seed to generation_seed so we produce the same map with the same seed */
 		if (_settings_game.game_creation.generation_seed == GENERATE_NEW_SEED) _settings_game.game_creation.generation_seed = _settings_newgame.game_creation.generation_seed = InteractiveRandom();
 		_random.SetSeed(_settings_game.game_creation.generation_seed);
+
+		/* Generates a unique id for the savegame, to avoid accidentally overwriting a save */
+		/* We keep id 0 for old savegames that don't have an id */
+		_settings_game.game_creation.generation_unique_id = _interactive_random.Next(UINT32_MAX - 1) + 1; /* Generates between [1,UINT32_MAX] */
+
 		SetGeneratingWorldProgress(GWP_MAP_INIT, 2);
 		SetObjectToPlace(SPR_CURSOR_ZZZ, PAL_NONE, HT_NONE, WC_MAIN_WINDOW, 0);
 
@@ -120,8 +125,8 @@ static void _GenerateWorld(void *)
 
 			/* Make sure the tiles at the north border are void tiles if needed. */
 			if (_settings_game.construction.freeform_edges) {
-				for (uint row = 0; row < MapSizeY(); row++) MakeVoid(TileXY(0, row));
-				for (uint col = 0; col < MapSizeX(); col++) MakeVoid(TileXY(col, 0));
+				for (uint x = 0; x < MapSizeX(); x++) MakeVoid(TileXY(x, 0));
+				for (uint y = 0; y < MapSizeY(); y++) MakeVoid(TileXY(0, y));
 			}
 
 			/* Make the map the height of the setting */

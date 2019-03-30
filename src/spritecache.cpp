@@ -20,6 +20,7 @@
 #include "core/alloc_func.hpp"
 #include "core/math_func.hpp"
 #include "core/mem_func.hpp"
+#include "scope_info.h"
 
 #include "table/sprites.h"
 #include "table/strings.h"
@@ -95,11 +96,21 @@ PACK_N(struct SpriteCache {
 	uint32 id;
 	uint32 lru;
 	uint16 file_slot;
-	SpriteType type : 7; ///< In some cases a single sprite is misused by two NewGRFs. Once as real sprite and once as recolour sprite. If the recolour sprite gets into the cache it might be drawn as real sprite which causes enormous trouble.
-	bool warned : 1;         ///< True iff the user has been warned about incorrect use of this sprite
+
+	/**
+	 * Bits 6 - 0:  SpriteType type  In some cases a single sprite is misused by two NewGRFs. Once as real sprite and once as recolour sprite. If the recolour sprite gets into the cache it might be drawn as real sprite which causes enormous trouble.
+	 * Bit      7:  bool warned      True iff the user has been warned about incorrect use of this sprite.
+	 */
+	byte type_field;
+
 	byte container_ver;      ///< Container version of the GRF the sprite is from.
 
 	void *GetPtr() { return this->buffer.GetPtr(); }
+
+	SpriteType GetType() const { return (SpriteType) GB(this->type_field, 0, 7); }
+	void SetType(SpriteType type) { SB(this->type_field, 0, 7, type); }
+	bool GetWarned() const { return GB(this->type_field, 7, 1); }
+	void SetWarned(bool warned) { SB(this->type_field, 7, 1, warned ? 1 : 0); }
 }, 4);
 assert_compile(sizeof(SpriteCache) <= 32);
 
@@ -175,7 +186,7 @@ bool SpriteExists(SpriteID id)
 SpriteType GetSpriteType(SpriteID sprite)
 {
 	if (!SpriteExists(sprite)) return ST_INVALID;
-	return GetSpriteCache(sprite)->type;
+	return GetSpriteCache(sprite)->GetType();
 }
 
 /**
@@ -440,12 +451,14 @@ static void *ReadRecolourSprite(uint16 file_slot, uint num)
  */
 static void *ReadSprite(const SpriteCache *sc, SpriteID id, SpriteType sprite_type, AllocatorProc *allocator)
 {
-	uint8 file_slot = sc->file_slot;
+	uint file_slot = sc->file_slot;
 	size_t file_pos = sc->file_pos;
+
+	SCOPE_INFO_FMT([&], "ReadSprite: pos: " PRINTF_SIZE ", id: %u, slot: %u (%s), type: %u", file_pos, id, file_slot, FioGetFilename(file_slot), sprite_type);
 
 	assert(sprite_type != ST_RECOLOUR);
 	assert(IsMapgenSpriteID(id) == (sprite_type == ST_MAPGEN));
-	assert(sc->type == sprite_type);
+	assert(sc->GetType() == sprite_type);
 
 	DEBUG(sprite, 9, "Load sprite %d", id);
 
@@ -501,13 +514,13 @@ static void *ReadSprite(const SpriteCache *sc, SpriteID id, SpriteType sprite_ty
 		return (void*)GetRawSprite(SPR_IMG_QUERY, ST_NORMAL, allocator);
 	}
 
-	if (sprite->type == ST_FONT && ZOOM_LVL_GUI != ZOOM_LVL_NORMAL) {
-		/* Make ZOOM_LVL_GUI be ZOOM_LVL_NORMAL */
-		sprite[ZOOM_LVL_NORMAL].width  = sprite[ZOOM_LVL_GUI].width;
-		sprite[ZOOM_LVL_NORMAL].height = sprite[ZOOM_LVL_GUI].height;
-		sprite[ZOOM_LVL_NORMAL].x_offs = sprite[ZOOM_LVL_GUI].x_offs;
-		sprite[ZOOM_LVL_NORMAL].y_offs = sprite[ZOOM_LVL_GUI].y_offs;
-		sprite[ZOOM_LVL_NORMAL].data   = sprite[ZOOM_LVL_GUI].data;
+	if (sprite->type == ST_FONT && ZOOM_LVL_FONT != ZOOM_LVL_NORMAL) {
+		/* Make ZOOM_LVL_NORMAL be ZOOM_LVL_FONT */
+		sprite[ZOOM_LVL_NORMAL].width  = sprite[ZOOM_LVL_FONT].width;
+		sprite[ZOOM_LVL_NORMAL].height = sprite[ZOOM_LVL_FONT].height;
+		sprite[ZOOM_LVL_NORMAL].x_offs = sprite[ZOOM_LVL_FONT].x_offs;
+		sprite[ZOOM_LVL_NORMAL].y_offs = sprite[ZOOM_LVL_FONT].y_offs;
+		sprite[ZOOM_LVL_NORMAL].data   = sprite[ZOOM_LVL_FONT].data;
 	}
 
 	return BlitterFactory::GetCurrentBlitter()->Encode(sprite, allocator);
@@ -565,9 +578,11 @@ void ReadGRFSpriteOffsets(byte container_version)
  * @param container_version Container version of the GRF.
  * @return True if a valid sprite was loaded, false on any error.
  */
-bool LoadNextSprite(int load_index, byte file_slot, uint file_sprite_id, byte container_version)
+bool LoadNextSprite(int load_index, uint file_slot, uint file_sprite_id, byte container_version)
 {
 	size_t file_pos = FioGetPos();
+
+	SCOPE_INFO_FMT([&], "LoadNextSprite: pos: " PRINTF_SIZE ", slot: %u (%s), load_index: %d, file_sprite_id: %u, container_ver: %u", file_pos, file_slot, FioGetFilename(file_slot), load_index, file_sprite_id, container_version);
 
 	/* Read sprite header. */
 	uint32 num = container_version >= 2 ? FioReadDword() : FioReadWord();
@@ -623,8 +638,8 @@ bool LoadNextSprite(int load_index, byte file_slot, uint file_sprite_id, byte co
 	}
 	sc->lru = 0;
 	sc->id = file_sprite_id;
-	sc->type = type;
-	sc->warned = false;
+	sc->SetType(type);
+	sc->SetWarned(false);
 	sc->container_ver = container_version;
 
 	return true;
@@ -639,8 +654,8 @@ void DupSprite(SpriteID old_spr, SpriteID new_spr)
 	scnew->file_slot = scold->file_slot;
 	scnew->file_pos = scold->file_pos;
 	scnew->id = scold->id;
-	scnew->type = scold->type;
-	scnew->warned = false;
+	scnew->SetType(scold->GetType());
+	scnew->SetWarned(false);
 	scnew->container_ver = scold->container_ver;
 }
 
@@ -690,14 +705,14 @@ static void DeleteEntriesFromSpriteCache(size_t target)
 	SpriteID i = 0;
 	for (; i != _spritecache.size() && candidate_bytes < target; i++) {
 		SpriteCache *sc = GetSpriteCache(i);
-		if (sc->type != ST_RECOLOUR && sc->GetPtr() != NULL) {
+		if (sc->GetType() != ST_RECOLOUR && sc->GetPtr() != NULL) {
 			push({ sc->lru, i, sc->buffer.GetSize() });
 			if (candidate_bytes >= target) break;
 		}
 	}
 	for (; i != _spritecache.size(); i++) {
 		SpriteCache *sc = GetSpriteCache(i);
-		if (sc->type != ST_RECOLOUR && sc->GetPtr() != NULL && sc->lru <= candidates.front().lru) {
+		if (sc->GetType() != ST_RECOLOUR && sc->GetPtr() != NULL && sc->lru <= candidates.front().lru) {
 			push({ sc->lru, i, sc->buffer.GetSize() });
 			while (!candidates.empty() && candidate_bytes - candidates.front().size >= target) {
 				pop();
@@ -766,14 +781,14 @@ static void *HandleInvalidSpriteRequest(SpriteID sprite, SpriteType requested, S
 		"recolour",      // ST_RECOLOUR
 	};
 
-	SpriteType available = sc->type;
+	SpriteType available = sc->GetType();
 	if (requested == ST_FONT && available == ST_NORMAL) {
-		if (sc->GetPtr() == NULL) sc->type = ST_FONT;
-		return GetRawSprite(sprite, sc->type, allocator);
+		if (sc->GetPtr() == NULL) sc->SetType(ST_FONT);
+		return GetRawSprite(sprite, sc->GetType(), allocator);
 	}
 
-	byte warning_level = sc->warned ? 6 : 0;
-	sc->warned = true;
+	byte warning_level = sc->GetWarned() ? 6 : 0;
+	sc->SetWarned(true);
 	DEBUG(sprite, warning_level, "Tried to load %s sprite #%d as a %s sprite. Probable cause: NewGRF interference", sprite_types[available], sprite, sprite_types[requested]);
 
 	switch (requested) {
@@ -815,7 +830,7 @@ void *GetRawSprite(SpriteID sprite, SpriteType type, AllocatorProc *allocator)
 
 	SpriteCache *sc = GetSpriteCache(sprite);
 
-	if (sc->type != type) return HandleInvalidSpriteRequest(sprite, type, sc, allocator);
+	if (sc->GetType() != type) return HandleInvalidSpriteRequest(sprite, type, sc, allocator);
 
 	if (allocator == NULL) {
 		/* Load sprite into/from spritecache */
@@ -848,11 +863,11 @@ uint32 GetSpriteMainColour(SpriteID sprite_id, PaletteID palette_id)
 	if (!SpriteExists(sprite_id)) return 0;
 
 	SpriteCache *sc = GetSpriteCache(sprite_id);
-	if (sc->type != ST_NORMAL) return 0;
+	if (sc->GetType() != ST_NORMAL) return 0;
 
 	const byte * const remap = (palette_id == PAL_NONE ? NULL : GetNonSprite(GB(palette_id, 0, PALETTE_WIDTH), ST_RECOLOUR) + 1);
 
-	uint8 file_slot = sc->file_slot;
+	uint file_slot = sc->file_slot;
 	size_t file_pos = sc->file_pos;
 
 	SpriteLoader::Sprite sprites[ZOOM_LVL_COUNT];
@@ -950,7 +965,7 @@ void GfxClearSpriteCache()
 	/* Clear sprite ptr for all cached items */
 	for (uint i = 0; i != _spritecache.size(); i++) {
 		SpriteCache *sc = GetSpriteCache(i);
-		if (sc->type != ST_RECOLOUR && sc->GetPtr() != NULL) DeleteEntryFromSpriteCache(i);
+		if (sc->GetType() != ST_RECOLOUR && sc->GetPtr() != NULL) DeleteEntryFromSpriteCache(i);
 	}
 }
 

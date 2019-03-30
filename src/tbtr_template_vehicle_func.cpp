@@ -91,17 +91,17 @@ void tbtr_debug_pvt (const Train *printme)
 
 void BuildTemplateGuiList(GUITemplateList *list, Scrollbar *vscroll, Owner oid, RailType railtype)
 {
-	list->Clear();
+	list->clear();
 	const TemplateVehicle *tv;
 
 	FOR_ALL_TEMPLATES(tv) {
 		if (tv->owner == oid && (tv->IsPrimaryVehicle() || tv->IsFreeWagonChain()) && TemplateVehicleContainsEngineOfRailtype(tv, railtype)) {
-			*list->Append() = tv;
+			list->push_back(tv);
 		}
 	}
 
 	list->RebuildDone();
-	if (vscroll) vscroll->SetCount(list->Length());
+	if (vscroll) vscroll->SetCount(list->size());
 }
 
 Money CalculateOverallTemplateCost(const TemplateVehicle *tv)
@@ -141,7 +141,7 @@ void DrawTemplate(const TemplateVehicle *tv, int left, int right, int y)
 }
 
 // copy important stuff from the virtual vehicle to the template
-inline void SetupTemplateVehicleFromVirtual(TemplateVehicle *tmp, TemplateVehicle *prev, Train *virt)
+void SetupTemplateVehicleFromVirtual(TemplateVehicle *tmp, TemplateVehicle *prev, Train *virt)
 {
 	if (prev) {
 		prev->SetNext(tmp);
@@ -366,7 +366,7 @@ void CmdRefitTrainFromTemplate(Train *t, TemplateVehicle *tv, DoCommandFlag flag
 		// refit t as tv
 		uint32 cb = GetCmdRefitVeh(t);
 
-		DoCommand(t->tile, t->index, tv->cargo_type | tv->cargo_subtype << 8 | 1 << 16 | (1 << 5), flags, cb);
+		DoCommand(t->tile, t->index, tv->cargo_type | tv->cargo_subtype << 8 | (1 << 16) | (1 << 31), flags, cb);
 
 		// next
 		t = t->GetNextUnit();

@@ -15,9 +15,10 @@
 #include "core/enum_type.hpp"
 
 typedef byte VehicleOrderID;  ///< The index of an order within its current vehicle (not pool related)
-typedef uint16 OrderID;
+typedef uint32 OrderID;
 typedef uint16 OrderListID;
 typedef uint16 DestinationID;
+typedef uint32 TimetableTicks;
 
 /** Invalid vehicle order index (sentinel) */
 static const VehicleOrderID INVALID_VEH_ORDER_ID = 0xFF;
@@ -25,7 +26,7 @@ static const VehicleOrderID INVALID_VEH_ORDER_ID = 0xFF;
 static const VehicleOrderID MAX_VEH_ORDER_ID     = INVALID_VEH_ORDER_ID - 1;
 
 /** Invalid order (sentinel) */
-static const OrderID INVALID_ORDER = 0xFFFF;
+static const OrderID INVALID_ORDER = 0xFFFFFF;
 
 /**
  * Maximum number of orders in implicit-only lists before we start searching
@@ -141,11 +142,13 @@ enum OrderConditionVariable {
 	OCV_REQUIRES_SERVICE,   ///< Skip when the vehicle requires service
 	OCV_UNCONDITIONALLY,    ///< Always skip
 	OCV_REMAINING_LIFETIME, ///< Skip based on the remaining lifetime
+	OCV_MAX_RELIABILITY,    ///< Skip based on the maximum reliability
 	OCV_CARGO_WAITING,      ///< Skip if specified cargo is waiting at next station
 	OCV_CARGO_ACCEPTANCE,   ///< Skip if specified cargo is accepted at next station
 	OCV_FREE_PLATFORMS,     ///< Skip based on free platforms at next station
 	OCV_PERCENT,            ///< Skip xx percent of times
 	OCV_SLOT_OCCUPANCY,     ///< Test if train slot is fully occupied
+	OCV_TRAIN_IN_SLOT,      ///< Test if train is in slot
 	OCV_END
 };
 

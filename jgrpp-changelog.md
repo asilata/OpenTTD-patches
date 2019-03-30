@@ -2,6 +2,65 @@
 
 * * *
 
+### v0.29.3 (2019-02-22)
+* Fix crash which could occur when disaster vehicles which emit effects were present.
+* Fix case where trains were unable to exit signalled bridge/tunnels.
+* Fix ships being drawn facing the wrong direction in some circumstances.
+* Fix flickering of viewport hover tooltips in fast-forward mode.
+* Fix second rail track type not being preserved when upgrading bridges or changing the NewGRF railtype configuration.
+* Fix cases where the game blocked instead of pausing when cargo dest link graph jobs lagged.
+* Fix ship collision avoidance near docks when dock not directly under station sign.
+* Add game setting to allow only non-stop orders for ground vehicles.
+* Fix compilation in MSVC.
+* Adjust bundle install paths on OSX.
+* Bump trunk base from commit 33e3f4916173b4129cbbe60f94dae659a70edb83 to commit 690d1dd6a4490821759a6025114e0dc3eb656293.
+
+### v0.29.2 (2019-02-04)
+* Fix order list corruption when drag-moving order.
+* Fix trains not reversing in station when the front is on a diagonal rail piece or in a bridge/tunnel.
+* Fix loading of bridges from Spring 2013 Patchpack savegames (v2.1.147 and later).
+* Bump trunk base from commit fa53abe864a6939dc4dac8a6c61443e486e0eb04 to commit 33e3f4916173b4129cbbe60f94dae659a70edb83.
+
+### v0.29.1 (2019-02-02)
+* Fix train disconnecting when reversing at the end of a sloped bridge ramp due to heading the wrong way onto a signalled bridge.
+* Fix display of two rail types per tile (horizontal overlay tracks).
+* Fix crash or other failures when using more than approximately 230 NewGRFs.
+* Fix input and display of hhmm times in timetable and scheduled dispatch GUI, when using large day length or ticks/minute values.
+* Add GUI setting for when to ask for confirmation before overwriting an existing savegame file, add unique ID to savegames.
+* Performance improvements.
+* Bump trunk base from commit 391bc45c41287bf3016e33266b24f30cdbfb5f07 to commit fa53abe864a6939dc4dac8a6c61443e486e0eb04.
+
+### v0.29.0 (2019-01-02)
+* Fix crash or other failures when using more than approximately 230 NewGRFs.
+* Allow up to two rail types per tile.
+* Land area purchasing:
+  * Allow purchasing a region of tiles at once, by dragging.
+  * Add company rate limit for land purchasing.
+  * Add setting to control if and how land purchasing is permitted.
+* Routing restrictions: Add advanced feature reverse behind signal.
+* Prevent AIs from creating or adding to rail custom bridge heads.
+* NewGRF interface: Add Action 5 support for programmable signals graphics.
+* Bump trunk base from commit 16a36dffa0ccd7753de0100ee320a4982bb1945c to commit 391bc45c41287bf3016e33266b24f30cdbfb5f07.
+
+### v0.28.0 (2018-11-22)
+* Fix trains unnecessarily slowing down when passing waypoints.
+* Template-based train replacement: Add option to replace only old vehicles.
+* Timetabling:
+  * Extend timetable wait/travel times from 16 to 32 bits wide.
+  * Fix timetabling of through-load orders.
+* Scheduled dispatch: Don't show invalid required vehicle estimate.
+* Routing restrictions:
+  * Add train is in slot conditional order.
+  * Prevent adding train slot state conditional orders to non-train vehicles.
+* Zoning:
+  * Add modes to show 2x2 and 3x3 town road grids.
+  * Fix refreshing of SW edge of station coverage area.
+* Stations under bridges:
+  * Add NewGRF properties for permitted bridge pillars above station tiles, and bridge pillars present below bridges.
+  * Set minimum bridge height clearances and permitted bridge pillars for the default stations.
+  * Set present pillars for the default bridges.
+* Bump trunk base from commit 59a1614ba0724bf5240b91d8cd2b90ff7eeb286c to commit 16a36dffa0ccd7753de0100ee320a4982bb1945c.
+
 ### v0.27.1 (2018-09-20)
 * Fix crash when changing timetable leave early flag of current order.
 * Add setting to enable flipping direction of all train types in depot.

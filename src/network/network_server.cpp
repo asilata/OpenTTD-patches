@@ -9,8 +9,6 @@
 
 /** @file network_server.cpp Server part of the network protocol. */
 
-#ifdef ENABLE_NETWORK
-
 #include "../stdafx.h"
 #include "../strings_func.h"
 #include "../date_func.h"
@@ -165,7 +163,7 @@ struct PacketWriter : SaveFilter {
 		this->current = NULL;
 	}
 
-	/* virtual */ void Write(byte *buf, size_t size)
+	void Write(byte *buf, size_t size) override
 	{
 		/* We want to abort the saving when the socket is closed. */
 		if (this->cs == NULL) SlError(STR_NETWORK_ERROR_LOSTCONNECTION);
@@ -192,7 +190,7 @@ struct PacketWriter : SaveFilter {
 		this->total_size += size;
 	}
 
-	/* virtual */ void Finish()
+	void Finish() override
 	{
 		/* We want to abort the saving when the socket is closed. */
 		if (this->cs == NULL) SlError(STR_NETWORK_ERROR_LOSTCONNECTION);
@@ -1683,7 +1681,7 @@ static void NetworkAutoCleanCompanies()
 			/* Is the company empty for autoclean_unprotected-months, and is there no protection? */
 			if (_settings_client.network.autoclean_unprotected != 0 && _network_company_states[c->index].months_empty > _settings_client.network.autoclean_unprotected && StrEmpty(_network_company_states[c->index].password)) {
 				/* Shut the company down */
-				DoCommandP(0, 2 | c->index << 16, CRR_AUTOCLEAN, CMD_COMPANY_CTRL);
+				DoCommandP(0, CCA_DELETE | c->index << 16, CRR_AUTOCLEAN, CMD_COMPANY_CTRL);
 				IConsolePrintF(CC_DEFAULT, "Auto-cleaned company #%d with no password", c->index + 1);
 			}
 			/* Is the company empty for autoclean_protected-months, and there is a protection? */
@@ -1697,7 +1695,7 @@ static void NetworkAutoCleanCompanies()
 			/* Is the company empty for autoclean_novehicles-months, and has no vehicles? */
 			if (_settings_client.network.autoclean_novehicles != 0 && _network_company_states[c->index].months_empty > _settings_client.network.autoclean_novehicles && vehicles_in_company[c->index] == 0) {
 				/* Shut the company down */
-				DoCommandP(0, 2 | c->index << 16, CRR_AUTOCLEAN, CMD_COMPANY_CTRL);
+				DoCommandP(0, CCA_DELETE | c->index << 16, CRR_AUTOCLEAN, CMD_COMPANY_CTRL);
 				IConsolePrintF(CC_DEFAULT, "Auto-cleaned company #%d with no vehicles", c->index + 1);
 			}
 		} else {
@@ -2104,13 +2102,13 @@ uint NetworkServerKickOrBanIP(const char *ip, bool ban)
 	/* Add address to ban-list */
 	if (ban) {
 		bool contains = false;
-		for (char **iter = _network_ban_list.Begin(); iter != _network_ban_list.End(); iter++) {
-			if (strcmp(*iter, ip) == 0) {
+		for (char *iter : _network_ban_list) {
+			if (strcmp(iter, ip) == 0) {
 				contains = true;
 				break;
 			}
 		}
-		if (!contains) *_network_ban_list.Append() = stredup(ip);
+		if (!contains) _network_ban_list.push_back(stredup(ip));
 	}
 
 	uint n = 0;
@@ -2144,7 +2142,7 @@ bool NetworkCompanyHasClients(CompanyID company)
 
 
 /**
- * Get the name of the client, if the user did not send it yet, Client #<no> is used.
+ * Get the name of the client, if the user did not send it yet, Client ID is used.
  * @param client_name The variable to write the name to.
  * @param last        The pointer to the last element of the destination buffer
  */
@@ -2213,5 +2211,3 @@ void NetworkServerNewCompany(const Company *c, NetworkClientInfo *ci)
 		NetworkServerSendChat(NETWORK_ACTION_COMPANY_NEW, DESTTYPE_BROADCAST, 0, "", ci->client_id, c->index + 1);
 	}
 }
-
-#endif /* ENABLE_NETWORK */

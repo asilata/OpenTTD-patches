@@ -130,12 +130,21 @@ enum GroundVehicleSubtypeFlags {
 	GVSF_VIRTUAL          = 6, ///< Used for virtual trains during template design, it is needed to skip checks for tile or depot status
 };
 
+/**
+ * Enum to handle vehicle cache flags.
+ */
+enum VehicleCacheFlags {
+	VCF_LAST_VISUAL_EFFECT      = 0, ///< Last vehicle in the consist with a visual effect.
+	VCF_GV_ZERO_SLOPE_RESIST    = 1, ///< GrounVehicle: Consist has zero slope resistance (valid only for the first engine), may be false negative.
+};
+
 /** Cached often queried values common to all vehicles. */
 struct VehicleCache {
 	uint16 cached_max_speed;        ///< Maximum speed of the consist (minimum of the max speed of all vehicles in the consist).
 	uint16 cached_cargo_age_period; ///< Number of ticks before carried cargo is aged.
 
 	byte cached_vis_effect;  ///< Visual effect to show (see #VisualEffect)
+	byte cached_veh_flags;   ///< Vehicle cache flags (see #VehicleCacheFlags)
 };
 
 /** Sprite sequence for a vehicle part. */
@@ -337,7 +346,7 @@ public:
 
 	uint16 load_unload_ticks;           ///< Ticks to wait before starting next cycle.
 	GroupID group_id;                   ///< Index of group Pool array
-	byte subtype;                       ///< subtype (Filled with values from #EffectVehicles/#TrainSubTypes/#AircraftSubTypes)
+	byte subtype;                       ///< subtype (Filled with values from #AircraftSubType/#DisasterSubType/#EffectVehicleType/#GroundVehicleSubtypeFlags)
 	DirectionByte cur_image_valid_dir;  ///< NOSAVE: direction for which cur_image does not need to be regenerated on the next tick
 
 	NewGRFCache grf_cache;              ///< Cache of often used calculated NewGRF values
@@ -452,9 +461,11 @@ public:
 	/**
 	 * Gets the sprite to show for the given direction
 	 * @param direction the direction the vehicle is facing
-	 * @param [out] result Vehicle sprite sequence.
+	 * @param[out] result Vehicle sprite sequence.
 	 */
 	virtual void GetImage(Direction direction, EngineImageType image_type, VehicleSpriteSeq *result) const { result->Clear(); }
+
+	Direction GetMapImageDirection() const { return this->direction; }
 
 	const GRFFile *GetGRF() const;
 	uint32 GetGRFID() const;
@@ -820,6 +831,8 @@ public:
 	 * @return true if a depot could be found.
 	 */
 	virtual bool FindClosestDepot(TileIndex *location, DestinationID *destination, bool *reverse) { return false; }
+
+	virtual void SetDestTile(TileIndex tile) { this->dest_tile = tile; }
 
 	CommandCost SendToDepot(DoCommandFlag flags, DepotCommand command, TileIndex specific_depot = 0);
 
@@ -1235,12 +1248,13 @@ struct SpecializedVehicle : public Vehicle {
 		/* Explicitly choose method to call to prevent vtable dereference -
 		 * it gives ~3% runtime improvements in games with many vehicles */
 		if (update_delta) ((T *)this)->T::UpdateDeltaXY();
-		if (this->cur_image_valid_dir != this->direction) {
+		const Direction current_direction = ((T *)this)->GetMapImageDirection();
+		if (this->cur_image_valid_dir != current_direction) {
 			_sprite_group_resolve_check_veh_check = true;
 			_sprite_group_resolve_check_veh_type = EXPECTED_TYPE;
 			VehicleSpriteSeq seq;
-			((T *)this)->T::GetImage(this->direction, EIT_ON_MAP, &seq);
-			this->cur_image_valid_dir = _sprite_group_resolve_check_veh_check ? this->direction : INVALID_DIR;
+			((T *)this)->T::GetImage(current_direction, EIT_ON_MAP, &seq);
+			this->cur_image_valid_dir = _sprite_group_resolve_check_veh_check ? current_direction : INVALID_DIR;
 			_sprite_group_resolve_check_veh_check = false;
 			if (force_update || this->sprite_seq != seq) {
 				this->sprite_seq = seq;
@@ -1277,5 +1291,14 @@ struct FreeUnitIDGenerator {
 
 /** Sentinel for an invalid coordinate. */
 static const int32 INVALID_COORD = 0x7fffffff;
+
+inline void InvalidateVehicleTickCaches()
+{
+	extern bool _tick_caches_valid;
+	_tick_caches_valid = false;
+}
+
+void ClearVehicleTickCaches();
+void RemoveFromOtherVehicleTickCache(const Vehicle *v);
 
 #endif /* VEHICLE_BASE_H */

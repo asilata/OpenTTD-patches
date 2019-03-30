@@ -91,7 +91,7 @@ void GroundVehicle<T, Type>::CalculatePower(uint32& total_power, uint32& max_te,
 		if (current_power > 0) max_te += u->GetWeight() * u->GetTractiveEffort();
 	}
 
-	max_te *= 9800; // Tractive effort in (tonnes * 1000 * 9.8 =) N.
+	max_te *= GROUND_ACCELERATION; // Tractive effort in (tonnes * 1000 * 9.8 =) N.
 	max_te /= 256;  // Tractive effort is a [0-255] coefficient.
 }
 
@@ -112,6 +112,7 @@ void GroundVehicle<T, Type>::CargoChanged()
 		u->gcache.cached_slope_resistance = current_weight * u->GetSlopeSteepness() * 100;
 		u->cur_image_valid_dir = INVALID_DIR;
 	}
+	ClrBit(this->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST);
 
 	/* Store consist weight in cache. */
 	this->gcache.cached_weight = max<uint32>(1, weight);
@@ -252,6 +253,8 @@ int GroundVehicle<T, Type>::GetAcceleration()
 					!(Train::From(this)->flags & (VRF_IS_BROKEN | (1 << VRF_TRAIN_STUCK))) &&
 					this->cur_speed < 3 && accel < 5) {
 				SetBit(Train::From(this)->flags, VRF_TOO_HEAVY);
+				extern std::vector<Train *> _tick_train_too_heavy_cache;
+				_tick_train_too_heavy_cache.push_back(Train::From(this));
 			}
 		}
 
@@ -330,12 +333,14 @@ void GroundVehicle<T, Type>::UpdateZPositionInWormhole()
 		if (delta != 2) {
 			slope = slope_north;
 			SetBit(this->gv_flags, going_north ? GVF_GOINGUP_BIT : GVF_GOINGDOWN_BIT);
+			ClrBit(this->First()->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST);
 		}
 	} else if ((delta = south_coord - pos_coord) <= 3) {
 		this->z_pos = TILE_HEIGHT * (delta == 3 ? -2 : -1);
 		if (delta != 2) {
 			slope = SLOPE_ELEVATED ^ slope_north;
 			SetBit(this->gv_flags, going_north ? GVF_GOINGDOWN_BIT : GVF_GOINGUP_BIT);
+			ClrBit(this->First()->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST);
 		}
 	}
 

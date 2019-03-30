@@ -17,16 +17,14 @@
 #include "fileio_func.h"
 #include "settings_type.h"
 
-#if defined(WIN32) || defined(WIN64)
+#if defined(_WIN32)
 #include "os/windows/win32.h"
 #endif
 
 #include <time.h>
 
-#if defined(ENABLE_NETWORK)
 #include "network/network_admin.h"
 SOCKET _debug_socket = INVALID_SOCKET;
-#endif /* ENABLE_NETWORK */
 
 #if defined(RANDOM_DEBUG) && defined(UNIX) && defined(__GLIBC__)
 #include <unistd.h>
@@ -121,7 +119,6 @@ char *DumpDebugFacilityNames(char *buf, char *last)
  */
 static void debug_print(const char *dbg, const char *buf)
 {
-#if defined(ENABLE_NETWORK)
 	if (_debug_socket != INVALID_SOCKET) {
 		char buf2[1024 + 32];
 
@@ -131,7 +128,6 @@ static void debug_print(const char *dbg, const char *buf)
 		send(_debug_socket, buf2, (int)strlen(buf2), 0);
 		return;
 	}
-#endif /* ENABLE_NETWORK */
 	if (strcmp(dbg, "desync") == 0) {
 		static FILE *f = FioFOpenFile("commands-out.log", "wb", AUTOSAVE_DIR);
 		if (f != NULL) {
@@ -179,7 +175,7 @@ static void debug_print(const char *dbg, const char *buf)
 	/* do not write desync messages to the console on Windows platforms, as they do
 	 * not seem able to handle text direction change characters in a console without
 	 * crashing, and NetworkTextMessage includes these */
-#if defined(WIN32) || defined(WIN64)
+#if defined(_WIN32)
 	if (strcmp(dbg, "desync") != 0) {
 		TCHAR system_buf[512];
 		convert_to_fs(buffer, system_buf, lengthof(system_buf), true);
@@ -189,9 +185,7 @@ static void debug_print(const char *dbg, const char *buf)
 	fputs(buffer, stderr);
 #endif
 
-#ifdef ENABLE_NETWORK
 	NetworkAdminConsole(dbg, buf);
-#endif /* ENABLE_NETWORK */
 	IConsoleDebug(dbg, buf);
 }
 

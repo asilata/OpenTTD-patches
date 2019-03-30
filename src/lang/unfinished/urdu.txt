@@ -946,6 +946,8 @@ STR_GAME_OPTIONS_RESOLUTION_OTHER                               :دیگر
 
 
 
+
+
 STR_GAME_OPTIONS_BASE_GRF                                       :{BLACK}بُنیادی گرافک سیٹ
 STR_GAME_OPTIONS_BASE_GRF_TOOLTIP                               :{BLACK}بُنیادی گرافک سیٹ اختیار کریں
 STR_GAME_OPTIONS_BASE_GRF_STATUS                                :{RED}{NUM} missing/corrupted file{P "" s}
@@ -1112,6 +1114,7 @@ STR_CONFIG_SETTING_STOP_ON_TOWN_ROAD                            :شہر کی م�
 STR_CONFIG_SETTING_STOP_ON_COMPETITOR_ROAD                      :مد مقابلوں کی ملکیت سڑکوں پر ڈرائیو تھرو اڈے بنانے کی اجازت: {STRING}
 STR_CONFIG_SETTING_DYNAMIC_ENGINES_EXISTING_VEHICLES            :{WHITE}جب گاڑیاں موجود ہوں تو یہ سیٹنگ بدلنا ممکن نہیں
 STR_CONFIG_SETTING_INFRASTRUCTURE_MAINTENANCE                   :انفراسٹرکچر کی بحالی: {STRING}
+
 
 STR_CONFIG_SETTING_NEVER_EXPIRE_AIRPORTS                        :ہوائی اڈوں کی معیاد کبھی ختم نہ ہو: {STRING}
 
@@ -1308,7 +1311,6 @@ STR_CONFIG_SETTING_ENVIRONMENT_INDUSTRIES                       :{ORANGE}صنع�
 STR_CONFIG_SETTING_AI                                           :{ORANGE}مد مقابل
 STR_CONFIG_SETTING_AI_NPC                                       :{ORANGE}کمپیوٹر کے کھلاڑی
 
-STR_CONFIG_SETTING_PATHFINDER_OPF                               :اصلی
 STR_CONFIG_SETTING_PATHFINDER_NPF                               :NPF
 STR_CONFIG_SETTING_PATHFINDER_YAPF_RECOMMENDED                  :YAPF {BLUE}(Recommended)
 
@@ -1378,13 +1380,9 @@ STR_QUIT_NO                                                     :{BLACK}نہیں
 
 # Supported OSes
 STR_OSNAME_WINDOWS                                              :ونڈوز
-STR_OSNAME_DOS                                                  :DOS
 STR_OSNAME_UNIX                                                 :یونیکس
 STR_OSNAME_OSX                                                  :OS{NBSP}X
-STR_OSNAME_BEOS                                                 :BeOS
 STR_OSNAME_HAIKU                                                :Haiku
-STR_OSNAME_MORPHOS                                              :MorphOS
-STR_OSNAME_AMIGAOS                                              :AmigaOS
 STR_OSNAME_OS2                                                  :OS/2
 STR_OSNAME_SUNOS                                                :SunOS
 
@@ -1411,7 +1409,6 @@ STR_CHEAT_CHANGE_DATE_QUERY_CAPT                                :{WHITE}موجو
 STR_CHEAT_SETUP_PROD                                            :{LTBLUE}پیداوار میں تبدیلی کو فعال کریں: {ORANGE}{STRING}
 
 # Livery window
-STR_LIVERY_CAPTION                                              :{WHITE}نئے رنگوں کا انتخاب
 
 STR_LIVERY_GENERAL_TOOLTIP                                      :{BLACK}رنگوں کا عام انتخاب دکھائیں
 STR_LIVERY_TRAIN_TOOLTIP                                        :{BLACK}ریل گاڑیوں کے رنگوں کا انتخاب دکھائیں
@@ -2289,9 +2286,6 @@ STR_FINANCES_POSITIVE_INCOME                                    :{BLACK}+{CURREN
 
 # Company view
 
-STR_COMPANY_VIEW_INFRASTRUCTURE_RAIL                            :{WHITE}{COMMA}پٹڑی { "کا" "کے" P} { "ٹکڑا" "ٹکڑے" P}
-STR_COMPANY_VIEW_INFRASTRUCTURE_ROAD                            :{WHITE}{COMMA} سڑک { "کا" "کے" P} { "ٹکڑا" "ٹکڑے" P}
-STR_COMPANY_VIEW_INFRASTRUCTURE_WATER                           :{WHITE}{COMMA} پانی { "کا" "کے" P} { "ٹکڑا" "ٹکڑے" P}
 STR_COMPANY_VIEW_INFRASTRUCTURE_STATION                         :{WHITE}{COMMA} اسٹیشن کی ٹائلیں
 STR_COMPANY_VIEW_INFRASTRUCTURE_AIRPORT                         :{COMMA}{WHITE} ہوائی اڈے
 STR_COMPANY_VIEW_INFRASTRUCTURE_NONE                            :{WHITE}کوئی نہیں
@@ -2322,12 +2316,7 @@ STR_COMPANY_INFRASTRUCTURE_VIEW_TOTAL                           :{WHITE}{CURRENC
 # Industry view
 STR_INDUSTRY_VIEW_PRODUCTION_LAST_MONTH_TITLE                   :{BLACK}گزشتہ ماہ کی پیداوار:
 
-############ range for requires starts
-############ range for requires ends
 
-
-############ range for produces starts
-############ range for produces ends
 
 
 # Vehicle lists
@@ -2359,6 +2348,8 @@ STR_GROUPS_CLICK_ON_GROUP_FOR_TOOLTIP                           :{BLACK}گروپ
 STR_BUY_VEHICLE_AIRCRAFT_CAPTION                                :نیا طیارہ
 
 STR_PURCHASE_INFO_AIRCRAFT_RANGE                                :{BLACK}پہنچ: {GOLD}{COMMA} ٹائلیں
+
+
 
 
 

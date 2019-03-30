@@ -36,7 +36,7 @@
  * @param timetabled   If the new value is explicitly timetabled.
  * @param ignore_lock  If the change should be applied even if the value is locked.
  */
-static void ChangeTimetable(Vehicle *v, VehicleOrderID order_number, uint16 val, ModifyTimetableFlags mtf, bool timetabled, bool ignore_lock = false)
+static void ChangeTimetable(Vehicle *v, VehicleOrderID order_number, uint32 val, ModifyTimetableFlags mtf, bool timetabled, bool ignore_lock = false)
 {
 	Order *order = v->GetOrder(order_number);
 	int total_delta = 0;
@@ -133,7 +133,7 @@ static void ChangeTimetable(Vehicle *v, VehicleOrderID order_number, uint16 val,
  * - p1 = (bit 28-30) - Timetable data to change (@see ModifyTimetableFlags)
  * - p1 = (bit    31) - 0 to set timetable wait/travel time, 1 to clear it
  * @param p2 The amount of time to wait.
- * - p2 = (bit  0-15) - The data to modify as specified by p1 bits 28-29.
+ * - p2 =             - The data to modify as specified by p1 bits 28-30.
  *                      0 to clear times, UINT16_MAX to clear speed limit.
  * @param text unused
  * @return the cost of this operation or an error
@@ -157,20 +157,20 @@ CommandCost CmdChangeTimetable(TileIndex tile, DoCommandFlag flags, uint32 p1, u
 
 	bool clear_field = GB(p1, 31, 1) == 1;
 
-	int wait_time   = order->GetWaitTime();
-	int travel_time = order->GetTravelTime();
+	TimetableTicks wait_time   = order->GetWaitTime();
+	TimetableTicks travel_time = order->GetTravelTime();
 	int max_speed   = order->GetMaxSpeed();
 	bool wait_fixed = order->IsWaitFixed();
 	bool travel_fixed = order->IsTravelFixed();
 	OrderLeaveType leave_type = order->GetLeaveType();
 	switch (mtf) {
 		case MTF_WAIT_TIME:
-			wait_time = GB(p2, 0, 16);
+			wait_time = p2;
 			if (clear_field) assert(wait_time == 0);
 			break;
 
 		case MTF_TRAVEL_TIME:
-			travel_time = GB(p2, 0, 16);
+			travel_time = p2;
 			if (clear_field) assert(travel_time == 0);
 			break;
 
@@ -180,15 +180,15 @@ CommandCost CmdChangeTimetable(TileIndex tile, DoCommandFlag flags, uint32 p1, u
 			break;
 
 		case MTF_SET_WAIT_FIXED:
-			wait_fixed = GB(p2, 0, 16) != 0;
+			wait_fixed = p2 != 0;
 			break;
 
 		case MTF_SET_TRAVEL_FIXED:
-			travel_fixed = GB(p2, 0, 16) != 0;
+			travel_fixed = p2 != 0;
 			break;
 
 		case MTF_SET_LEAVE_TYPE:
-			leave_type = (OrderLeaveType)GB(p2, 0, 16);
+			leave_type = (OrderLeaveType)p2;
 			if (leave_type >= OLT_END) return CMD_ERROR;
 			break;
 
@@ -404,31 +404,29 @@ CommandCost CmdSetTimetableStart(TileIndex tile, DoCommandFlag flags, uint32 p1,
 	if (timetable_all && !v->orders.list->IsCompleteTimetable()) return CMD_ERROR;
 
 	const DateTicksScaled now = _scaled_date_ticks;
-	DateTicksScaled start_date_scaled = (_settings_game.economy.day_length_factor * (((DateTicks)_date * DAY_TICKS) + _date_fract + (DateTicks)(int32)p2)) + sub_ticks;
+	DateTicksScaled start_date_scaled = (_settings_game.economy.day_length_factor * (((DateTicksScaled)_date * DAY_TICKS) + _date_fract + (DateTicksScaled)(int32)p2)) + sub_ticks;
 
 	if (flags & DC_EXEC) {
-		SmallVector<Vehicle *, 8> vehs;
+		std::vector<Vehicle *> vehs;
 
 		if (timetable_all) {
 			for (Vehicle *w = v->orders.list->GetFirstSharedVehicle(); w != NULL; w = w->NextShared()) {
-				*vehs.Append() = w;
+				vehs.push_back(w);
 			}
 		} else {
-			*vehs.Append() = v;
+			vehs.push_back(v);
 		}
 
 		int total_duration = v->orders.list->GetTimetableTotalDuration();
-		int num_vehs = vehs.Length();
+		int num_vehs = vehs.size();
 
 		if (num_vehs >= 2) {
-			QSortT(vehs.Begin(), vehs.Length(), &VehicleTimetableSorter);
+			QSortT(vehs.data(), vehs.size(), &VehicleTimetableSorter);
 		}
 
-		int base = vehs.FindIndex(v);
+		int idx = vehs.begin() - std::find(vehs.begin(), vehs.end(), v);
 
-		for (Vehicle **viter = vehs.Begin(); viter != vehs.End(); viter++) {
-			int idx = (viter - vehs.Begin()) - base;
-			Vehicle *w = *viter;
+		for (Vehicle *w : vehs) {
 
 			w->lateness_counter = 0;
 			ClrBit(w->vehicle_flags, VF_TIMETABLE_STARTED);
@@ -440,6 +438,7 @@ CommandCost CmdSetTimetableStart(TileIndex tile, DoCommandFlag flags, uint32 p1,
 			w->timetable_start = tt_start / _settings_game.economy.day_length_factor;
 			w->timetable_start_subticks = tt_start % _settings_game.economy.day_length_factor;
 			SetWindowDirty(WC_VEHICLE_TIMETABLE, w->index);
+			++idx;
 		}
 
 	}
@@ -517,7 +516,7 @@ CommandCost CmdAutofillTimetable(TileIndex tile, DoCommandFlag flags, uint32 p1,
 
 CommandCost CmdAutomateTimetable(TileIndex index, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text)
 {
-	VehicleID veh = GB(p1, 0, 16);
+	VehicleID veh = GB(p1, 0, 20);
 
 	Vehicle *v = Vehicle::GetIfValid(veh);
 	if (v == NULL || !v->IsPrimaryVehicle()) return CMD_ERROR;
@@ -834,7 +833,7 @@ void UpdateVehicleTimetable(Vehicle *v, bool travelling)
 		just_started = !HasBit(v->vehicle_flags, VF_TIMETABLE_STARTED);
 
 		if (v->timetable_start != 0) {
-			v->lateness_counter = _scaled_date_ticks - ((_settings_game.economy.day_length_factor * v->timetable_start) + v->timetable_start_subticks);
+			v->lateness_counter = _scaled_date_ticks - ((_settings_game.economy.day_length_factor * ((DateTicksScaled) v->timetable_start)) + v->timetable_start_subticks);
 			v->timetable_start = 0;
 			v->timetable_start_subticks = 0;
 		}

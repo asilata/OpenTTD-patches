@@ -99,7 +99,7 @@ struct GUISettings {
 	bool   smooth_scroll;                    ///< smooth scroll viewports
 	bool   measure_tooltip;                  ///< show a permanent tooltip when dragging tools
 	byte   liveries;                         ///< options for displaying company liveries, 0=none, 1=self, 2=all
-	bool   prefer_teamchat;                  ///< choose the chat message target with <ENTER>, true=all clients, false=your team
+	bool   prefer_teamchat;                  ///< choose the chat message target with \<ENTER\>, true=all clients, false=your team
 	uint8  advanced_vehicle_list;            ///< use the "advanced" vehicle list
 	uint8  loading_indicators;               ///< show loading indicators
 	uint8  default_rail_type;                ///< the default rail type for the rail GUI
@@ -117,6 +117,7 @@ struct GUISettings {
 	bool   autosave_on_network_disconnect;   ///< save an autosave when you get disconnected from a network game with an error?
 	uint8  date_format_in_default_names;     ///< should the default savegame/screenshot name use long dates (31th Dec 2008), short dates (31-12-2008) or ISO dates (2008-12-31)
 	byte   max_num_autosaves;                ///< controls how many autosavegames are made before the game starts to overwrite (names them 0 to max_num_autosaves - 1)
+	uint8  savegame_overwrite_confirm;       ///< Mode for when to warn about overwriting an existing savegame
 	bool   population_in_label;              ///< show the population of a town in his label?
 	uint8  right_mouse_btn_emulation;        ///< should we emulate right mouse clicking?
 	uint8  scrollwheel_scrolling;            ///< scrolling using the scroll wheel?
@@ -185,6 +186,7 @@ struct GUISettings {
 	bool   show_progsig_ui;                  ///< Show programmable signals feature in UI
 	bool   show_veh_list_cargo_filter;       ///< Show cargo list filter in UI
 	uint8  osk_activation;                   ///< Mouse gesture to trigger the OSK.
+	byte   starting_colour;                  ///< default color scheme for the company to start a new game with
 	bool   show_vehicle_route_steps;         ///< when a window related to a specific vehicle is focused, show route steps
 	bool   show_vehicle_list_company_colour; ///< show the company colour of vehicles which have an owner different to the owner of the vehicle list
 	bool   enable_single_veh_shared_order_gui;    ///< enable showing a single vehicle in the shared order GUI window
@@ -192,6 +194,7 @@ struct GUISettings {
 	bool   disable_top_veh_list_mass_actions;     ///< disable mass actions buttons for non-group vehicle lists
 	bool   adv_sig_bridge_tun_modes;         ///< Enable advanced modes for signals on bridges/tunnels.
 	bool   show_depot_sell_gui;              ///< Show go to depot and sell in UI
+	bool   open_vehicle_gui_clone_share;     ///< Open vehicle GUI when share-cloning vehicle from depot GUI
 
 	uint16 console_backlog_timeout;          ///< the minimum amount of time items should be in the console backlog before they will be removed in ~3 seconds granularity.
 	uint16 console_backlog_length;           ///< the minimum amount of items in the console backlog before items will be removed.
@@ -199,11 +202,9 @@ struct GUISettings {
 	uint8  station_gui_group_order;          ///< the order of grouping cargo entries in the station gui
 	uint8  station_gui_sort_by;              ///< sort cargo entries in the station gui by station name or amount
 	uint8  station_gui_sort_order;           ///< the sort order of entries in the station gui - ascending or descending
-#ifdef ENABLE_NETWORK
 	uint16 network_chat_box_width_pct;       ///< width of the chat box in percent
 	uint8  network_chat_box_height;          ///< height of the chat box in lines
 	uint16 network_chat_timeout;             ///< timeout of chat messages in seconds
-#endif
 
 	uint8  developer;                        ///< print non-fatal warnings in console (>= 1), copy debug output to console (== 2)
 	bool   show_date_in_logs;                ///< whether to show dates in console logs
@@ -282,7 +283,6 @@ struct NewsSettings {
 
 /** All settings related to the network. */
 struct NetworkSettings {
-#ifdef ENABLE_NETWORK
 	uint16 sync_freq;                                     ///< how often do we check whether we are still in-sync
 	uint8  frame_freq;                                    ///< how often do we send commands to the clients
 	uint16 commands_per_frame;                            ///< how many commands may be sent each frame_freq frames?
@@ -322,13 +322,12 @@ struct NetworkSettings {
 	char   last_host[NETWORK_HOSTNAME_LENGTH];            ///< IP address of the last joined server
 	uint16 last_port;                                     ///< port of the last joined server
 	bool   no_http_content_downloads;                     ///< do not do content downloads over HTTP
-#else /* ENABLE_NETWORK */
-#endif
 };
 
 /** Settings related to the creation of games. */
 struct GameCreationSettings {
 	uint32 generation_seed;                  ///< noise seed for world generation
+	uint32 generation_unique_id;             ///< random id to differentiate savegames
 	Year   starting_year;                    ///< starting date
 	uint8  map_x;                            ///< X size of map
 	uint8  map_y;                            ///< Y size of map
@@ -378,6 +377,7 @@ struct ConstructionSettings {
 	uint8  rail_custom_bridge_heads;         ///< allow construction of rail custom bridge heads
 	bool   allow_grf_objects_under_bridges;  ///< allow all NewGRF objects under bridges
 	bool   allow_stations_under_bridges;     ///< allow all station tiles under bridges
+	byte   purchase_land_permitted;          ///< whether and how purchasing land is permitted
 
 	uint32 terraform_per_64k_frames;         ///< how many tile heights may, over a long period, be terraformed per 65536 frames?
 	uint16 terraform_frame_burst;            ///< how many tile heights may, over a short period, be terraformed?
@@ -385,6 +385,8 @@ struct ConstructionSettings {
 	uint16 clear_frame_burst;                ///< how many tiles may, over a short period, be cleared?
 	uint32 tree_per_64k_frames;              ///< how many trees may, over a long period, be planted per 65536 frames?
 	uint16 tree_frame_burst;                 ///< how many trees may, over a short period, be planted?
+	uint32 purchase_land_per_64k_frames;     ///< how many tiles may, over a long period, be purchased per 65536 frames?
+	uint16 purchase_land_frame_burst;        ///< how many tiles may, over a short period, be purchased?
 	uint8  tree_growth_rate;                 ///< tree growth rate
 };
 
@@ -401,12 +403,6 @@ struct AISettings {
 struct ScriptSettings {
 	uint8  settings_profile;                 ///< difficulty profile to set initial settings of scripts, esp. random AIs
 	uint32 script_max_opcode_till_suspend;   ///< max opcode calls till scripts will suspend
-};
-
-/** Settings related to the old pathfinder. */
-struct OPFSettings {
-	uint16 pf_maxlength;                     ///< maximum length when searching for a train route for new pathfinder
-	byte   pf_maxdepth;                      ///< maximum recursion depth when searching for a train route for new pathfinder
 };
 
 /** Settings related to the new pathfinder. */
@@ -475,6 +471,8 @@ struct YAPFSettings {
 	uint32 rail_longer_platform_per_tile_penalty;  ///< penalty for longer  station platform than train (per tile)
 	uint32 rail_shorter_platform_penalty;          ///< penalty for shorter station platform than train
 	uint32 rail_shorter_platform_per_tile_penalty; ///< penalty for shorter station platform than train (per tile)
+	uint32 ship_curve45_penalty;                   ///< penalty for 45-deg curve for ships
+	uint32 ship_curve90_penalty;                   ///< penalty for 90-deg curve for ships
 };
 
 /** Settings related to all pathfinders. */
@@ -495,7 +493,6 @@ struct PathfinderSettings {
 	byte   wait_for_pbs_path;                ///< how long to wait for a path reservation.
 	byte   path_backoff_interval;            ///< ticks between checks for a free path.
 
-	OPFSettings  opf;                        ///< pathfinder settings for the old pathfinder
 	NPFSettings  npf;                        ///< pathfinder settings for the new pathfinder
 	YAPFSettings yapf;                       ///< pathfinder settings for the yet another pathfinder
 };
@@ -507,6 +504,7 @@ struct OrderSettings {
 	bool   selectgoods;                      ///< only send the goods to station if a train has been there
 	bool   no_servicing_if_no_breakdowns;    ///< don't send vehicles to depot when breakdowns are disabled
 	bool   serviceathelipad;                 ///< service helicopters at helipads automatically (no need to send to depot)
+	bool   nonstop_only;                     ///< allow non-stop orders only
 
 	uint8  old_occupancy_smoothness;         ///< moved to company settings: percentage smoothness of occupancy measurement changes
 	bool   old_timetable_separation;         ///< moved to company settings: whether to perform automatic separation based on timetable
@@ -564,6 +562,7 @@ struct EconomySettings {
 	uint8  larger_towns;                     ///< the number of cities to build. These start off larger and grow twice as fast
 	uint8  initial_city_size;                ///< multiplier for the initial size of the cities compared to towns
 	TownLayoutByte town_layout;              ///< select town layout, @see TownLayout
+	TownCargoGenMode town_cargogen_mode;     ///< algorithm for generating cargo from houses, @see TownCargoGenMode
 	bool   allow_town_roads;                 ///< towns are allowed to build roads (always allowed when generating world / in SE)
 	uint16  town_min_distance;               ///< minimum distance between towns
 	TownFoundingByte found_town;             ///< town founding, @see TownFounding
@@ -578,7 +577,6 @@ struct EconomySettings {
 	bool   infrastructure_maintenance;       ///< enable monthly maintenance fee for owner infrastructure
 	uint8  day_length_factor;                ///< factor which the length of day is multiplied
 	uint16 random_road_reconstruction;       ///< chance out of 1000 per tile loop for towns to start random road re-construction
-	bool   town_bridge_over_rail;            ///< enable towns to build bridges over rails
 };
 
 struct LinkGraphSettings {
@@ -605,6 +603,7 @@ struct LinkGraphSettings {
 /** Settings related to stations. */
 struct StationSettings {
 	bool   modified_catchment;               ///< different-size catchment areas
+	bool   serve_neutral_industries;         ///< company stations can serve industries with attached neutral stations
 	bool   adjacent_stations;                ///< allow stations to be built directly adjacent to other stations
 	bool   distant_join_stations;            ///< allow to join non-adjacent stations
 	bool   never_expire_airports;            ///< never expire airports
@@ -635,6 +634,7 @@ struct CompanySettings {
 	uint8  auto_timetable_separation_rate;   ///< percentage of auto timetable separation change to apply
 	bool infra_others_buy_in_depot[4];       ///< other companies can buy/autorenew in this companies depots (where infra sharing enabled)
 	uint16 timetable_autofill_rounding;      ///< round up timetable times to be a multiple of this number of ticks
+	bool advance_order_on_clone;             ///< when cloning a vehicle or copying/sharing an order list, advance the current order to a suitable point
 };
 
 /** All settings together for the game. */

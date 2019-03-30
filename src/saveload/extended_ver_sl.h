@@ -16,6 +16,8 @@
 
 #include <vector>
 
+enum SaveLoadVersion : uint16;
+
 /**
  * List of extended features, each feature has its own (16 bit) version
  */
@@ -25,6 +27,7 @@ enum SlXvFeatureIndex {
 	XSLFI_TRACE_RESTRICT_OWNER,                   ///< Trace restrict: train owner test
 	XSLFI_TRACE_RESTRICT_ORDRCND,                 ///< Trace restrict: slot conditional order
 	XSLFI_TRACE_RESTRICT_STATUSCND,               ///< Trace restrict: train status condition
+	XSLFI_TRACE_RESTRICT_REVERSE,                 ///< Trace restrict: reverse
 	XSLFI_PROG_SIGS,                              ///< programmable signals patch
 	XSLFI_ADJACENT_CROSSINGS,                     ///< Adjacent level crossings closure patch
 	XSLFI_SAFER_CROSSINGS,                        ///< Safer level crossings
@@ -33,6 +36,7 @@ enum SlXvFeatureIndex {
 	XSLFI_TOWN_CARGO_ADJ,                         ///< Town cargo adjustment patch
 	XSLFI_SIG_TUNNEL_BRIDGE,                      ///< Signals on tunnels and bridges
 	XSLFI_IMPROVED_BREAKDOWNS,                    ///< Improved breakdowns patch
+	XSLFI_CONSIST_BREAKDOWN_FLAG,                 ///< Consist breakdown flag
 	XSLFI_TT_WAIT_IN_DEPOT,                       ///< Timetabling waiting time in depot patch
 	XSLFI_AUTO_TIMETABLE,                         ///< Auto timetables and separation patch
 	XSLFI_VEHICLE_REPAIR_COST,                    ///< Vehicle repair costs patch
@@ -62,6 +66,10 @@ enum SlXvFeatureIndex {
 	XSLFI_WHOLE_MAP_CHUNK,                        ///< Whole map chunk
 	XSLFI_ST_LAST_VEH_TYPE,                       ///< Per-cargo station last vehicle type
 	XSLFI_SELL_AT_DEPOT_ORDER,                    ///< Sell vehicle on arrival at depot orders
+	XSLFI_BUY_LAND_RATE_LIMIT,                    ///< Buy land rate limit
+	XSLFI_DUAL_RAIL_TYPES,                        ///< Two rail-types per tile
+	XSLFI_CONSIST_SPEED_RD_FLAG,                  ///< Consist speed reduction flag
+	XSLFI_SAVEGAME_UNIQUE_ID,                     ///< Savegame unique ID
 
 	XSLFI_RIFF_HEADER_60_BIT,                     ///< Size field in RIFF chunk header is 60 bit
 	XSLFI_HEIGHT_8_BIT,                           ///< Map tile height is 8 bit instead of 4 bit, but savegame version may be before this became true in trunk
@@ -106,7 +114,7 @@ struct SlXvFeatureTest {
 	SlXvFeatureTest(TestFunctorPtr functor_)
 			: min_version(0), max_version(0), feature(XSLFI_NULL), op(XSLFTO_OR), functor(functor_) { }
 
-	bool IsFeaturePresent(uint16 savegame_version, uint16 savegame_version_from, uint16 savegame_version_to) const;
+	bool IsFeaturePresent(SaveLoadVersion savegame_version, SaveLoadVersion savegame_version_from, SaveLoadVersion savegame_version_to) const;
 };
 
 bool SlXvIsFeaturePresent(SlXvFeatureIndex feature, uint16 min_version = 1, uint16 max_version = 0xFFFF);

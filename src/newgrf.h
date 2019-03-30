@@ -19,6 +19,8 @@
 #include "core/bitmath_func.hpp"
 #include "core/alloc_type.hpp"
 #include "core/smallvec_type.hpp"
+#include "3rdparty/cpp-btree/btree_map.h"
+#include <bitset>
 
 /**
  * List of different canal 'features'.
@@ -101,6 +103,110 @@ struct GRFLabel {
 	struct GRFLabel *next;
 };
 
+enum Action0RemapPropertyIds {
+	A0RPI_CHECK_PROPERTY_LENGTH = 0x10000,
+	A0RPI_UNKNOWN_IGNORE = 0x200,
+	A0RPI_UNKNOWN_ERROR,
+
+	A0RPI_STATION_MIN_BRIDGE_HEIGHT,
+	A0RPI_STATION_DISALLOWED_BRIDGE_PILLARS,
+	A0RPI_BRIDGE_MENU_ICON,
+	A0RPI_BRIDGE_PILLAR_FLAGS,
+};
+
+enum GRFPropertyMapFallbackMode {
+	GPMFM_IGNORE,
+	GPMFM_ERROR_ON_USE,
+	GPMFM_ERROR_ON_DEFINITION,
+	GPMFM_END,
+};
+
+struct GRFPropertyMapDefinition {
+	const char *name; // NULL indicates the end of the list
+	int id;
+	uint8 feature;
+
+	/** Create empty object used to identify the end of a list. */
+	GRFPropertyMapDefinition() :
+		name(NULL),
+		id(0),
+		feature(0)
+	{}
+
+	GRFPropertyMapDefinition(uint8 feature, int id, const char *name) :
+		name(name),
+		id(id),
+		feature(feature)
+	{}
+};
+
+struct GRFFilePropertyRemapEntry {
+	const char *name = nullptr;
+	int id = 0;
+	uint8 feature = 0;
+	uint8 property_id = 0;
+};
+
+struct GRFFilePropertyRemapSet {
+	std::bitset<256> remapped_ids;
+	btree::btree_map<uint8, GRFFilePropertyRemapEntry> mapping;
+
+	GRFFilePropertyRemapEntry &Entry(uint8 property)
+	{
+		this->remapped_ids.set(property);
+		return this->mapping[property];
+	}
+};
+
+/** The type of action 5 type. */
+enum Action5BlockType {
+	A5BLOCK_FIXED,                ///< Only allow replacing a whole block of sprites. (TTDP compatible)
+	A5BLOCK_ALLOW_OFFSET,         ///< Allow replacing any subset by specifiing an offset.
+	A5BLOCK_INVALID,              ///< unknown/not-implemented type
+};
+/** Information about a single action 5 type. */
+struct Action5Type {
+	Action5BlockType block_type;  ///< How is this Action5 type processed?
+	SpriteID sprite_base;         ///< Load the sprites starting from this sprite.
+	uint16 min_sprites;           ///< If the Action5 contains less sprites, the whole block will be ignored.
+	uint16 max_sprites;           ///< If the Action5 contains more sprites, only the first max_sprites sprites will be used.
+	const char *name;             ///< Name for error messages.
+};
+
+struct Action5TypeRemapDefinition {
+	const char *name; // NULL indicates the end of the list
+	const Action5Type info;
+
+	/** Create empty object used to identify the end of a list. */
+	Action5TypeRemapDefinition() :
+		name(NULL),
+		info({ A5BLOCK_INVALID, 0, 0, 0, NULL })
+	{}
+
+	Action5TypeRemapDefinition(const char *type_name, Action5BlockType block_type, SpriteID sprite_base, uint16 min_sprites, uint16 max_sprites, const char *info_name) :
+		name(type_name),
+		info({ block_type, sprite_base, min_sprites, max_sprites, info_name })
+	{}
+};
+
+struct Action5TypeRemapEntry {
+	const Action5Type *info = nullptr;
+	const char *name = nullptr;
+	uint8 type_id = 0;
+	GRFPropertyMapFallbackMode fallback_mode = GPMFM_IGNORE;
+};
+
+struct Action5TypeRemapSet {
+	std::bitset<256> remapped_ids;
+	btree::btree_map<uint8, Action5TypeRemapEntry> mapping;
+
+	Action5TypeRemapEntry &Entry(uint8 property)
+	{
+		this->remapped_ids.set(property);
+		return this->mapping[property];
+	}
+};
+
 /** Dynamic data of a loaded NewGRF */
 struct GRFFile : ZeroedMemoryAllocator {
 	char *filename;
@@ -118,15 +224,19 @@ struct GRFFile : ZeroedMemoryAllocator {
 	struct AirportSpec **airportspec;
 	struct AirportTileSpec **airtspec;
 
+	GRFFilePropertyRemapSet action0_property_remaps[GSF_END];
+	Action5TypeRemapSet action5_type_remaps;
+	AutoFreeSmallVector<const char *> remap_unknown_property_names;
+
 	uint32 param[0x80];
 	uint param_end;  ///< one more than the highest set parameter
 
 	GRFLabel *label; ///< Pointer to the first label. This is a linked list, not an array.
 
-	SmallVector<CargoLabel, 4> cargo_list;          ///< Cargo translation table (local ID -> label)
+	std::vector<CargoLabel> cargo_list;             ///< Cargo translation table (local ID -> label)
 	uint8 cargo_map[NUM_CARGO];                     ///< Inverse cargo translation table (CargoID -> local ID)
 
-	SmallVector<RailTypeLabel, 4> railtype_list;    ///< Railtype translation table
+	std::vector<RailTypeLabel> railtype_list;       ///< Railtype translation table
 	RailTypeByte railtype_map[RAILTYPE_END];
 
 	CanalProperties canal_local_properties[CF_END]; ///< Canal properties as set by this NewGRF
@@ -139,6 +249,7 @@ struct GRFFile : ZeroedMemoryAllocator {
 	uint32 grf_features;                     ///< Bitset of GrfSpecFeature the grf uses
 	PriceMultipliers price_base_multipliers; ///< Price base multipliers as set by the grf.
 
+	uint32 var8D_overlay;                    ///< Overlay for global variable 8D (action 0x14)
 	uint32 var9D_overlay;                    ///< Overlay for global variable 9D (action 0x14)
 
 	GRFFile(const struct GRFConfig *config);

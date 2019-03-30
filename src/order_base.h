@@ -25,7 +25,7 @@
 #include <memory>
 #include <vector>
 
-typedef Pool<Order, OrderID, 256, 64000> OrderPool;
+typedef Pool<Order, OrderID, 256, 0xFF0000> OrderPool;
 typedef Pool<OrderList, OrderListID, 128, 64000> OrderListPool;
 extern OrderPool _order_pool;
 extern OrderListPool _orderlist_pool;
@@ -62,9 +62,9 @@ private:
 
 	std::unique_ptr<OrderExtraInfo> extra; ///< Extra order info
 
-	uint16 wait_time;    ///< How long in ticks to wait at the destination.
-	uint16 travel_time;  ///< How long in ticks the journey to this destination should take.
-	uint16 max_speed;    ///< How fast the vehicle may go on the way to the destination.
+	TimetableTicks wait_time;    ///< How long in ticks to wait at the destination.
+	TimetableTicks travel_time;  ///< How long in ticks the journey to this destination should take.
+	uint16 max_speed;            ///< How fast the vehicle may go on the way to the destination.
 
 	void AllocExtraInfo();
 	void DeAllocExtraInfo();
@@ -99,7 +99,7 @@ public:
 
 	Order *next;          ///< Pointer to next order. If NULL, end of list
 
-	Order() : refit_cargo(CT_NO_REFIT), max_speed(UINT16_MAX) {}
+	Order() : flags(0), refit_cargo(CT_NO_REFIT), max_speed(UINT16_MAX) {}
 	~Order();
 
 	Order(uint32 packed);
@@ -376,13 +376,13 @@ public:
 	inline bool IsTravelTimetabled() const { return this->IsType(OT_CONDITIONAL) ? this->travel_time > 0 : HasBit(this->flags, 7); }
 
 	/** Get the time in ticks a vehicle should wait at the destination or 0 if it's not timetabled. */
-	inline uint16 GetTimetabledWait() const { return this->IsWaitTimetabled() ? this->wait_time : 0; }
+	inline TimetableTicks GetTimetabledWait() const { return this->IsWaitTimetabled() ? this->wait_time : 0; }
 	/** Get the time in ticks a vehicle should take to reach the destination or 0 if it's not timetabled. */
-	inline uint16 GetTimetabledTravel() const { return this->IsTravelTimetabled() ? this->travel_time : 0; }
+	inline TimetableTicks GetTimetabledTravel() const { return this->IsTravelTimetabled() ? this->travel_time : 0; }
 	/** Get the time in ticks a vehicle will probably wait at the destination (timetabled or not). */
-	inline uint16 GetWaitTime() const { return this->wait_time; }
+	inline TimetableTicks GetWaitTime() const { return this->wait_time; }
 	/** Get the time in ticks a vehicle will probably take to reach the destination (timetabled or not). */
-	inline uint16 GetTravelTime() const { return this->travel_time; }
+	inline TimetableTicks GetTravelTime() const { return this->travel_time; }
 
 	/**
 	 * Get the maxmimum speed in km-ish/h a vehicle is allowed to reach on the way to the
@@ -408,13 +408,13 @@ public:
 	 * Set the time in ticks to wait at the destination.
 	 * @param time Time to set as wait time.
 	 */
-	inline void SetWaitTime(uint16 time) { this->wait_time = time;  }
+	inline void SetWaitTime(TimetableTicks time) { this->wait_time = time;  }
 
 	/**
 	 * Set the time in ticks to take for travelling to the destination.
 	 * @param time Time to set as travel time.
 	 */
-	inline void SetTravelTime(uint16 time) { this->travel_time = time; }
+	inline void SetTravelTime(TimetableTicks time) { this->travel_time = time; }
 
 	/**
 	 * Set the maxmimum speed in km-ish/h a vehicle is allowed to reach on the way to the
@@ -549,11 +549,14 @@ struct OrderList : OrderListPool::PoolItem<&_orderlist_pool> {
 private:
 	friend void AfterLoadVehicles(bool part_of_load); ///< For instantiating the shared vehicle chain
 	friend const struct SaveLoad *GetOrderListDescription(); ///< Saving and loading of order lists.
+	friend void Ptrs_ORDL(); ///< Saving and loading of order lists.
 
 	StationID GetBestLoadableNext(const Vehicle *v, const Order *o1, const Order *o2) const;
+	void ReindexOrderList();
+	Order *GetOrderAtFromList(int index) const;
 
 	Order *first;                     ///< First order of the order list.
-	VehicleOrderID num_orders;        ///< NOSAVE: How many orders there are in the list.
+	std::vector<Order *> order_index; ///< NOSAVE: Vector index of order list.
 	VehicleOrderID num_manual_orders; ///< NOSAVE: How many manually added orders are there in the list.
 	uint num_vehicles;                ///< NOSAVE: Number of vehicles that share this order list.
 	Vehicle *first_shared;            ///< NOSAVE: pointer to the first vehicle in the shared order chain.
@@ -572,7 +575,7 @@ private:
 public:
 	/** Default constructor producing an invalid order list. */
 	OrderList(VehicleOrderID num_orders = INVALID_VEH_ORDER_ID)
-		: first(NULL), num_orders(num_orders), num_manual_orders(0), num_vehicles(0), first_shared(NULL),
+		: first(NULL), num_manual_orders(0), num_vehicles(0), first_shared(NULL),
 		  timetable_duration(0), total_duration(0), scheduled_dispatch_duration(0),
 		  scheduled_dispatch_start_date(-1), scheduled_dispatch_start_full_date_fract(0),
 		  scheduled_dispatch_last_dispatch(0), scheduled_dispatch_max_delay(0) { }
@@ -603,7 +606,7 @@ public:
 	 * Get the last order of the order chain.
 	 * @return the last order of the chain.
 	 */
-	inline Order *GetLastOrder() const { return this->GetOrderAt(this->num_orders - 1); }
+	inline Order *GetLastOrder() const { return this->GetOrderAt(this->GetNumOrders() - 1); }
 
 	/**
 	 * Get the order after the given one or the first one, if the given one is the
@@ -617,7 +620,7 @@ public:
 	 * Get number of orders in the order list.
 	 * @return number of orders in the chain.
 	 */
-	inline VehicleOrderID GetNumOrders() const { return this->num_orders; }
+	inline VehicleOrderID GetNumOrders() const { return this->order_index.size(); }
 
 	/**
 	 * Get number of manually added orders in the order list.

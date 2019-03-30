@@ -357,9 +357,6 @@
     <ClCompile Include="..\src\screenshot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\sdl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\settings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -478,6 +475,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\base_station_base.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\bitmap_type.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\bmp.h">
@@ -709,6 +709,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\gui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\guitimer_func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\heightmap.h">
@@ -1032,9 +1035,6 @@
     <ClInclude Include="..\src\screenshot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\sdl.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\sound\sdl_s.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1111,6 +1111,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\station_gui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\station_kdtree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\station_type.h">
@@ -1221,6 +1224,9 @@
     <ClInclude Include="..\src\town_type.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\town_kdtree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\src\townname_func.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1270,6 +1276,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\viewport_func.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\viewport_kdtree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\viewport_sprite_sorter.h">
@@ -1366,6 +1375,9 @@
       <Filter>Core Source Code</Filter>
     </ClInclude>
     <ClInclude Include="..\src\core\geometry_type.hpp">
+      <Filter>Core Source Code</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\kdtree.hpp">
       <Filter>Core Source Code</Filter>
     </ClInclude>
     <ClCompile Include="..\src\core\math_func.cpp">
@@ -2856,6 +2868,9 @@
     <ClInclude Include="..\src\blitter\base.hpp">
       <Filter>Blitters</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\blitter\common.hpp">
+      <Filter>Blitters</Filter>
+    </ClInclude>
     <ClInclude Include="..\src\blitter\factory.hpp">
       <Filter>Blitters</Filter>
     </ClInclude>
@@ -3112,12 +3127,6 @@
       <Filter>Network Core</Filter>
     </ClInclude>
     <ClInclude Include="..\src\pathfinder\follow_track.hpp">
-      <Filter>Pathfinder</Filter>
-    </ClInclude>
-    <ClCompile Include="..\src\pathfinder\opf\opf_ship.cpp">
-      <Filter>Pathfinder</Filter>
-    </ClCompile>
-    <ClInclude Include="..\src\pathfinder\opf\opf_ship.h">
       <Filter>Pathfinder</Filter>
     </ClInclude>
     <ClInclude Include="..\src\pathfinder\pathfinder_func.h">

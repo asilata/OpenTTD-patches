@@ -12,6 +12,8 @@
 #ifndef SHIP_H
 #define SHIP_H
 
+#include <deque>
+
 #include "vehicle_base.h"
 #include "water_map.h"
 
@@ -20,11 +22,17 @@ extern const DiagDirection _ship_search_directions[TRACK_END][DIAGDIR_END];
 void GetShipSpriteSize(EngineID engine, uint &width, uint &height, int &xoffs, int &yoffs, EngineImageType image_type);
 WaterClass GetEffectiveWaterClass(TileIndex tile);
 
+typedef std::deque<TrackdirByte> ShipPathCache;
+
 /**
  * All ships have this type.
  */
 struct Ship FINAL : public SpecializedVehicle<Ship, VEH_SHIP> {
-	TrackBitsByte state; ///< The "track" the ship is following.
+	TrackBitsByte state;    ///< The "track" the ship is following.
+	ShipPathCache path;     ///< Cached path.
+	DirectionByte rotation; ///< Visible direction.
+	int16 rotation_x_pos;   ///< NOSAVE: X Position before rotation.
+	int16 rotation_y_pos;   ///< NOSAVE: Y Position before rotation.
 
 	/** We don't want GCC to zero our struct! It already is zeroed and has an index! */
 	Ship() : SpecializedVehicleBase() {}
@@ -37,6 +45,7 @@ struct Ship FINAL : public SpecializedVehicle<Ship, VEH_SHIP> {
 	void PlayLeaveStationSound() const;
 	bool IsPrimaryVehicle() const { return true; }
 	void GetImage(Direction direction, EngineImageType image_type, VehicleSpriteSeq *result) const;
+	Direction GetMapImageDirection() const { return this->rotation; }
 	int GetDisplaySpeed() const { return this->cur_speed / 2; }
 	int GetDisplayMaxSpeed() const { return this->vcache.cached_max_speed / 2; }
 	int GetCurrentMaxSpeed() const { return min(this->vcache.cached_max_speed, this->current_order.GetMaxSpeed() * 2); }
@@ -48,7 +57,10 @@ struct Ship FINAL : public SpecializedVehicle<Ship, VEH_SHIP> {
 	TileIndex GetOrderStationLocation(StationID station);
 	bool FindClosestDepot(TileIndex *location, DestinationID *destination, bool *reverse);
 	void UpdateCache();
+	void SetDestTile(TileIndex tile);
 };
+
+static const uint SHIP_MAX_ORDER_DISTANCE = 130;
 
 /**
  * Iterate over all ships.

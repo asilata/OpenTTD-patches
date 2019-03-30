@@ -86,7 +86,7 @@ public:
 		this->viewport->map_type = (ViewportMapType) _settings_client.gui.default_viewport_map_mode;
 	}
 
-	virtual void SetStringParameters(int widget) const
+	void SetStringParameters(int widget) const override
 	{
 		switch (widget) {
 			case WID_EV_CAPTION:
@@ -96,7 +96,7 @@ public:
 		}
 	}
 
-	virtual void OnClick(Point pt, int widget, int click_count)
+	void OnClick(Point pt, int widget, int click_count) override
 	{
 		switch (widget) {
 			case WID_EV_ZOOM_IN: DoZoomInOutWindow(ZOOM_IN,  this); break;
@@ -126,7 +126,7 @@ public:
 		}
 	}
 
-	virtual void OnResize()
+	void OnResize() override
 	{
 		if (this->viewport != NULL) {
 			NWidgetViewport *nvp = this->GetWidget<NWidgetViewport>(WID_EV_VIEWPORT);
@@ -134,7 +134,7 @@ public:
 		}
 	}
 
-	virtual void OnScroll(Point delta)
+	void OnScroll(Point delta) override
 	{
 		this->viewport->scrollpos_x += ScaleByZoom(delta.x, this->viewport->zoom);
 		this->viewport->scrollpos_y += ScaleByZoom(delta.y, this->viewport->zoom);
@@ -142,7 +142,7 @@ public:
 		this->viewport->dest_scrollpos_y = this->viewport->scrollpos_y;
 	}
 
-	virtual void OnMouseWheel(int wheel)
+	void OnMouseWheel(int wheel) override
 	{
 		if (_ctrl_pressed) {
 			/* Cycle through the drawing modes */
@@ -155,7 +155,7 @@ public:
 
 	virtual void OnMouseOver(Point pt, int widget)
 	{
-		if (pt.x != -1) {
+		if (pt.x != -1 && (_mouse_hovering || _settings_client.gui.hover_delay_ms == 0)) {
 			/* Show tooltip with last month production or town name */
 			const Point p = GetTileBelowCursor();
 			const TileIndex tile = TileVirtXY(p.x, p.y);
@@ -168,7 +168,7 @@ public:
 	 * @param data Information about the changed data.
 	 * @param gui_scope Whether the call is done from GUI scope. You may not do everything when not in GUI scope. See #InvalidateWindowData() for details.
 	 */
-	virtual void OnInvalidateData(int data = 0, bool gui_scope = true)
+	void OnInvalidateData(int data = 0, bool gui_scope = true) override
 	{
 		if (!gui_scope) return;
 		/* Only handle zoom message if intended for us (msg ZOOM_IN/ZOOM_OUT) */
@@ -229,21 +229,24 @@ void ShowTooltipForTile(Window *w, const TileIndex tile)
 			break;
 		}
 		case MP_INDUSTRY: {
+			static char buffer[1024];
 			const Industry *ind = Industry::GetByTile(tile);
 			const IndustrySpec *indsp = GetIndustrySpec(ind->type);
 
-			StringID str = STR_INDUSTRY_VIEW_TRANSPORTED_TOOLTIP;
-			uint prm_count = 0;
-			SetDParam(prm_count++, indsp->name);
+			buffer[0] = 0;
+			char *buf_pos = buffer;
+
 			for (byte i = 0; i < lengthof(ind->produced_cargo); i++) {
 				if (ind->produced_cargo[i] != CT_INVALID) {
-					SetDParam(prm_count++, ind->produced_cargo[i]);
-					SetDParam(prm_count++, ind->last_month_production[i]);
-					SetDParam(prm_count++, ToPercent8(ind->last_month_pct_transported[i]));
-					str++;
+					SetDParam(0, ind->produced_cargo[i]);
+					SetDParam(1, ind->last_month_production[i]);
+					SetDParam(2, ToPercent8(ind->last_month_pct_transported[i]));
+					buf_pos = GetString(buf_pos, STR_INDUSTRY_VIEW_TRANSPORTED_TOOLTIP_EXTENSION, lastof(buffer));
 				}
 			}
-			GuiShowTooltips(w, str, 0, NULL, TCC_HOVER_VIEWPORT);
+			SetDParam(0, indsp->name);
+			SetDParamStr(1, buffer);
+			GuiShowTooltips(w, STR_INDUSTRY_VIEW_TRANSPORTED_TOOLTIP, 0, NULL, TCC_HOVER_VIEWPORT);
 			break;
 		}
 		default:

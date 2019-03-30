@@ -126,8 +126,13 @@ struct CFollowTrackT
 		m_old_tile = old_tile;
 		m_old_td = old_td;
 		m_err = EC_NONE;
-		assert_tile(((TrackStatusToTrackdirBits(GetTileTrackStatus(m_old_tile, TT(), IsRoadTT() ? RoadVehicle::From(m_veh)->compatible_roadtypes : 0)) & TrackdirToTrackdirBits(m_old_td)) != 0) ||
-		       (IsTram() && GetSingleTramBit(m_old_tile) != INVALID_DIAGDIR) || (IsRailTT() && IsRailCustomBridgeHeadTile(m_old_tile)), m_old_td); // Disable the assertion for single tram bits
+		assert_tile(
+			((TrackStatusToTrackdirBits(
+				GetTileTrackStatus(m_old_tile, TT(), (IsRoadTT() && m_veh != NULL) ? RoadVehicle::From(m_veh)->compatible_roadtypes : 0)
+			) & TrackdirToTrackdirBits(m_old_td)) != 0) ||
+			(IsTram() && GetSingleTramBit(m_old_tile) != INVALID_DIAGDIR), // Disable the assertion for single tram bits
+			m_old_tile
+		);
 		m_exitdir = TrackdirToExitdir(m_old_td);
 		if (ForcedReverse()) return true;
 		if (!CanExitOldTile()) return false;
@@ -155,7 +160,7 @@ struct CFollowTrackT
 
 			return false;
 		}
-		if (!Allow90degTurns() && m_tiles_skipped == 0) {
+		if (m_tiles_skipped == 0 && ((!IsRailTT() && !Allow90degTurns()) || (IsRailTT() && Rail90DegTurnDisallowed(GetTileRailType(m_old_tile), GetTileRailType(m_new_tile), !Allow90degTurns())))) {
 			m_new_td_bits &= (TrackdirBits)~(int)TrackdirCrossesTrackdirs(m_old_td);
 			if (m_new_td_bits == TRACKDIR_BIT_NONE) {
 				m_err = EC_90DEG;
@@ -350,7 +355,7 @@ protected:
 
 		/* rail transport is possible only on compatible rail types */
 		if (IsRailTT()) {
-			RailType rail_type = GetTileRailType(m_new_tile);
+			RailType rail_type = GetTileRailTypeByEntryDir(m_new_tile, m_exitdir);
 			if (!HasBit(m_railtypes, rail_type)) {
 				/* incompatible rail type */
 				m_err = EC_RAIL_TYPE;
@@ -427,8 +432,9 @@ protected:
 			}
 		}
 
-		/* single tram bits cause reversing */
-		if (IsTram() && GetSingleTramBit(m_old_tile) == ReverseDiagDir(m_exitdir)) {
+		/* Single tram bits and standard road stops cause reversing. */
+		if (IsRoadTT() && ((IsTram() && GetSingleTramBit(m_old_tile) == ReverseDiagDir(m_exitdir)) ||
+				(IsStandardRoadStopTile(m_old_tile) && GetRoadStopDir(m_old_tile) == ReverseDiagDir(m_exitdir)))) {
 			/* reverse */
 			m_new_tile = m_old_tile;
 			m_new_td_bits = TrackdirToTrackdirBits(ReverseTrackdir(m_old_td));
@@ -476,7 +482,7 @@ public:
 		}
 		/* Check for speed limit imposed by railtype */
 		if (IsRailTT()) {
-			uint16 rail_speed = GetRailTypeInfo(GetRailType(m_old_tile))->max_speed;
+			uint16 rail_speed = GetRailTypeInfo(GetRailTypeByTrack(m_old_tile, TrackdirToTrack(m_old_td)))->max_speed;
 			if (rail_speed > 0) max_speed = min(max_speed, rail_speed);
 		}
 
@@ -490,8 +496,6 @@ typedef CFollowTrackT<TRANSPORT_WATER, Ship,        true > CFollowTrackWater;
 typedef CFollowTrackT<TRANSPORT_ROAD,  RoadVehicle, true > CFollowTrackRoad;
 typedef CFollowTrackT<TRANSPORT_RAIL,  Train,       true > CFollowTrackRail;
 
-typedef CFollowTrackT<TRANSPORT_WATER, Ship,        false> CFollowTrackWaterNo90;
-typedef CFollowTrackT<TRANSPORT_ROAD,  RoadVehicle, false> CFollowTrackRoadNo90;
 typedef CFollowTrackT<TRANSPORT_RAIL,  Train,       false> CFollowTrackRailNo90;
 
 typedef CFollowTrackT<TRANSPORT_RAIL, Train, true,  true > CFollowTrackFreeRail;

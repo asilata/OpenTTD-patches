@@ -598,6 +598,7 @@ static const StringID _order_goto_dropdown_aircraft[] = {
 static const OrderConditionVariable _order_conditional_variable[] = {
 	OCV_LOAD_PERCENTAGE,
 	OCV_RELIABILITY,
+	OCV_MAX_RELIABILITY,
 	OCV_MAX_SPEED,
 	OCV_AGE,
 	OCV_REMAINING_LIFETIME,
@@ -606,6 +607,7 @@ static const OrderConditionVariable _order_conditional_variable[] = {
 	OCV_CARGO_ACCEPTANCE,
 	OCV_FREE_PLATFORMS,
 	OCV_SLOT_OCCUPANCY,
+	OCV_TRAIN_IN_SLOT,
 	OCV_PERCENT,
 	OCV_UNCONDITIONALLY,
 };
@@ -655,6 +657,18 @@ static const StringID _order_conditional_condition_is_fully_occupied[] = {
 	STR_NULL,
 	STR_ORDER_CONDITIONAL_COMPARATOR_FULLY_OCCUPIED,
 	STR_ORDER_CONDITIONAL_COMPARATOR_NOT_YET_FULLY_OCCUPIED,
+	INVALID_STRING_ID,
+};
+
+static const StringID _order_conditional_condition_is_in_slot[] = {
+	STR_NULL,
+	STR_NULL,
+	STR_NULL,
+	STR_NULL,
+	STR_NULL,
+	STR_NULL,
+	STR_ORDER_CONDITIONAL_COMPARATOR_TRAIN_IN_SLOT,
+	STR_ORDER_CONDITIONAL_COMPARATOR_TRAIN_NOT_IN_SLOT,
 	INVALID_STRING_ID,
 };
 
@@ -854,6 +868,15 @@ void DrawOrderString(const Vehicle *v, const Order *order, int order_index, int 
 					SetDParam(2, STR_TRACE_RESTRICT_VARIABLE_UNDEFINED);
 				}
 				SetDParam(3, order->GetConditionComparator() == OCC_IS_TRUE ? STR_ORDER_CONDITIONAL_COMPARATOR_FULLY_OCCUPIED : STR_ORDER_CONDITIONAL_COMPARATOR_NOT_YET_FULLY_OCCUPIED);
+			} else if (ocv == OCV_TRAIN_IN_SLOT) {
+				if (TraceRestrictSlot::IsValidID(order->GetXData())) {
+					SetDParam(0, STR_ORDER_CONDITIONAL_IN_SLOT);
+					SetDParam(3, order->GetXData());
+				} else {
+					SetDParam(0, STR_ORDER_CONDITIONAL_IN_INVALID_SLOT);
+					SetDParam(3, STR_TRACE_RESTRICT_VARIABLE_UNDEFINED);
+				}
+				SetDParam(2, order->GetConditionComparator() == OCC_IS_TRUE ? STR_ORDER_CONDITIONAL_COMPARATOR_TRAIN_IN_SLOT : STR_ORDER_CONDITIONAL_COMPARATOR_TRAIN_NOT_IN_SLOT);
 			} else {
 				OrderConditionComparator occ = order->GetConditionComparator();
 				bool is_cargo = ocv == OCV_CARGO_ACCEPTANCE || ocv == OCV_CARGO_WAITING;
@@ -932,9 +955,13 @@ static Order GetOrderCmdFromTile(const Vehicle *v, TileIndex tile)
 
 	/* check depot first */
 	if (IsDepotTypeTile(tile, (TransportType)(uint)v->type) && IsInfraTileUsageAllowed(v->type, v->owner, tile)) {
+		if (v->type == VEH_ROAD && ((GetRoadTypes(tile) & RoadVehicle::From(v)->compatible_roadtypes) == 0)) {
+			order.Free();
+			return order;
+		}
 		order.MakeGoToDepot(v->type == VEH_AIRCRAFT ? GetStationIndex(tile) : GetDepotIndex(tile),
 				ODTFB_PART_OF_ORDERS,
-				(_settings_client.gui.new_nonstop && v->IsGroundVehicle()) ? ONSF_NO_STOP_AT_INTERMEDIATE_STATIONS : ONSF_STOP_EVERYWHERE);
+				((_settings_client.gui.new_nonstop || _settings_game.order.nonstop_only) && v->IsGroundVehicle()) ? ONSF_NO_STOP_AT_INTERMEDIATE_STATIONS : ONSF_STOP_EVERYWHERE);
 
 		if (_ctrl_pressed) order.SetDepotOrderType((OrderDepotTypeFlags)(order.GetDepotOrderType() ^ ODTFB_SERVICE));
 
@@ -946,7 +973,7 @@ static Order GetOrderCmdFromTile(const Vehicle *v, TileIndex tile)
 			v->type == VEH_TRAIN &&
 			IsInfraTileUsageAllowed(VEH_TRAIN, v->owner, tile)) {
 		order.MakeGoToWaypoint(GetStationIndex(tile));
-		if (_settings_client.gui.new_nonstop != _ctrl_pressed) order.SetNonStopType(ONSF_NO_STOP_AT_ANY_STATION);
+		if (_settings_client.gui.new_nonstop != _ctrl_pressed || _settings_game.order.nonstop_only) order.SetNonStopType(ONSF_NO_STOP_AT_ANY_STATION);
 		return order;
 	}
 
@@ -962,15 +989,17 @@ static Order GetOrderCmdFromTile(const Vehicle *v, TileIndex tile)
 
 		if (IsInfraUsageAllowed(v->type, v->owner, st->owner)) {
 			byte facil;
-			(facil = FACIL_DOCK, v->type == VEH_SHIP) ||
-			(facil = FACIL_TRAIN, v->type == VEH_TRAIN) ||
-			(facil = FACIL_AIRPORT, v->type == VEH_AIRCRAFT) ||
-			(facil = FACIL_BUS_STOP, v->type == VEH_ROAD && RoadVehicle::From(v)->IsBus()) ||
-			(facil = FACIL_TRUCK_STOP, 1);
+			switch (v->type) {
+				case VEH_SHIP:     facil = FACIL_DOCK;    break;
+				case VEH_TRAIN:    facil = FACIL_TRAIN;   break;
+				case VEH_AIRCRAFT: facil = FACIL_AIRPORT; break;
+				case VEH_ROAD:     facil = RoadVehicle::From(v)->IsBus() ? FACIL_BUS_STOP : FACIL_TRUCK_STOP; break;
+				default: NOT_REACHED();
+			}
 			if (st->facilities & facil) {
 				order.MakeGoToStation(st_index);
 				if (_ctrl_pressed) order.SetLoadType(OLF_FULL_LOAD_ANY);
-				if (_settings_client.gui.new_nonstop && v->IsGroundVehicle()) order.SetNonStopType(ONSF_NO_STOP_AT_INTERMEDIATE_STATIONS);
+				if ((_settings_client.gui.new_nonstop || _settings_game.order.nonstop_only) && v->IsGroundVehicle()) order.SetNonStopType(ONSF_NO_STOP_AT_INTERMEDIATE_STATIONS);
 				order.SetStopLocation(v->type == VEH_TRAIN ? (OrderStopLocation)(_settings_client.gui.stop_location) : OSL_PLATFORM_FAR_END);
 				return order;
 			}
@@ -1147,6 +1176,9 @@ private:
 			case OCV_SLOT_OCCUPANCY:
 				return _order_conditional_condition_is_fully_occupied;
 
+			case OCV_TRAIN_IN_SLOT:
+				return _order_conditional_condition_is_in_slot;
+
 			default:
 				return _order_conditional_condition;
 		}
@@ -1222,7 +1254,7 @@ private:
 		order.next = NULL;
 		order.index = 0;
 		order.MakeGoToDepot(0, ODTFB_PART_OF_ORDERS,
-				_settings_client.gui.new_nonstop && this->vehicle->IsGroundVehicle() ? ONSF_NO_STOP_AT_INTERMEDIATE_STATIONS : ONSF_STOP_EVERYWHERE);
+				(_settings_client.gui.new_nonstop || _settings_game.order.nonstop_only) && this->vehicle->IsGroundVehicle() ? ONSF_NO_STOP_AT_INTERMEDIATE_STATIONS : ONSF_STOP_EVERYWHERE);
 		order.SetDepotActionType(ODATFB_NEAREST_DEPOT);
 
 		DoCommandP(this->vehicle->tile, this->vehicle->index + (this->OrderGetSel() << 20), order.Pack(), CMD_INSERT_ORDER | CMD_MSG(STR_ERROR_CAN_T_INSERT_NEW_ORDER));
@@ -1420,7 +1452,7 @@ public:
 		}
 	}
 
-	virtual void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize) OVERRIDE
+	void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize) override
 	{
 		switch (widget) {
 			case WID_O_OCCUPANCY_LIST:
@@ -1468,7 +1500,7 @@ public:
 	 * @param data Information about the changed data.
 	 * @param gui_scope Whether the call is done from GUI scope. You may not do everything when not in GUI scope. See #InvalidateWindowData() for details.
 	 */
-	virtual void OnInvalidateData(int data = 0, bool gui_scope = true) OVERRIDE
+	void OnInvalidateData(int data = 0, bool gui_scope = true) override
 	{
 		VehicleOrderID from = INVALID_VEH_ORDER_ID;
 		VehicleOrderID to   = INVALID_VEH_ORDER_ID;
@@ -1685,7 +1717,7 @@ public:
 
 					OrderConditionVariable ocv = (order == nullptr) ? OCV_LOAD_PERCENTAGE : order->GetConditionVariable();
 					bool is_cargo = (ocv == OCV_CARGO_ACCEPTANCE || ocv == OCV_CARGO_WAITING);
-					bool is_slot_occupancy = (ocv == OCV_SLOT_OCCUPANCY);
+					bool is_slot_occupancy = (ocv == OCV_SLOT_OCCUPANCY || ocv == OCV_TRAIN_IN_SLOT);
 
 					if (is_cargo) {
 						if (order == NULL || !CargoSpec::Get(order->GetConditionValue())->IsValid()) {
@@ -1738,7 +1770,7 @@ public:
 		this->SetDirty();
 	}
 
-	virtual void OnPaint() OVERRIDE
+	void OnPaint() override
 	{
 		if (this->vehicle->owner != _local_company) {
 			this->selected_order = -1; // Disable selection any selected row at a competitor order window.
@@ -1748,7 +1780,7 @@ public:
 		this->DrawWidgets();
 	}
 
-	virtual void DrawWidget(const Rect &r, int widget) const OVERRIDE
+	void DrawWidget(const Rect &r, int widget) const override
 	{
 		switch (widget) {
 			case WID_O_ORDER_LIST:
@@ -1841,7 +1873,7 @@ public:
 		}
 	}
 
-	virtual void SetStringParameters(int widget) const OVERRIDE
+	void SetStringParameters(int widget) const override
 	{
 		switch (widget) {
 			case WID_O_COND_VALUE: {
@@ -1884,7 +1916,7 @@ public:
 		}
 	}
 
-	virtual void OnClick(Point pt, int widget, int click_count) OVERRIDE
+	void OnClick(Point pt, int widget, int click_count) override
 	{
 		switch (widget) {
 			case WID_O_ORDER_LIST: {
@@ -1967,7 +1999,7 @@ public:
 					this->OrderClick_Nonstop(-1);
 				} else {
 					const Order *o = this->vehicle->GetOrder(this->OrderGetSel());
-					ShowDropDownMenu(this, _order_non_stop_drowdown, o->GetNonStopType(), WID_O_NON_STOP, 0,
+					ShowDropDownMenu(this, _order_non_stop_drowdown, o->GetNonStopType(), WID_O_NON_STOP, _settings_game.order.nonstop_only ? 5 : 0,
 							o->IsType(OT_GOTO_STATION) ? 0 : (o->IsType(OT_GOTO_WAYPOINT) ? 3 : 12), 0, DDSF_LOST_FOCUS);
 				}
 				break;
@@ -2053,9 +2085,9 @@ public:
 				DropDownList *list = new DropDownList();
 				for (size_t i = 0; i < _sorted_standard_cargo_specs_size; ++i) {
 					const CargoSpec *cs = _sorted_cargo_specs[i];
-					*list->Append() = new DropDownListStringItem(cs->name, cs->Index(), false);
+					list->push_back(new DropDownListStringItem(cs->name, cs->Index(), false));
 				}
-				if (list->Length() == 0) {
+				if (list->size() == 0) {
 					delete list;
 					return;
 				}
@@ -2070,7 +2102,7 @@ public:
 			case WID_O_COND_VARIABLE: {
 				DropDownList *list = new DropDownList();
 				for (uint i = 0; i < lengthof(_order_conditional_variable); i++) {
-					*list->Append() = new DropDownListStringItem(STR_ORDER_CONDITIONAL_LOAD_PERCENTAGE + _order_conditional_variable[i], _order_conditional_variable[i], false);
+					list->push_back(new DropDownListStringItem(STR_ORDER_CONDITIONAL_LOAD_PERCENTAGE + _order_conditional_variable[i], _order_conditional_variable[i], false));
 				}
 				ShowDropDownList(this, list, this->vehicle->GetOrder(this->OrderGetSel())->GetConditionVariable(), WID_O_COND_VARIABLE);
 				break;
@@ -2083,7 +2115,8 @@ public:
 					(cond_var == OCV_REQUIRES_SERVICE ||
 					 cond_var == OCV_CARGO_ACCEPTANCE ||
 					 cond_var == OCV_CARGO_WAITING ||
-					 cond_var == OCV_SLOT_OCCUPANCY) ? 0x3F : 0xC0, 0, DDSF_LOST_FOCUS);
+					 cond_var == OCV_SLOT_OCCUPANCY ||
+					 cond_var == OCV_TRAIN_IN_SLOT) ? 0x3F : 0xC0, 0, DDSF_LOST_FOCUS);
 				break;
 			}
 
@@ -2115,7 +2148,7 @@ public:
 		}
 	}
 
-	virtual void OnQueryTextFinished(char *str) OVERRIDE
+	void OnQueryTextFinished(char *str) override
 	{
 		if (this->query_text_widget == WID_O_COND_VALUE && !StrEmpty(str)) {
 			VehicleOrderID sel = this->OrderGetSel();
@@ -2143,7 +2176,7 @@ public:
 		}
 	}
 
-	virtual void OnDropdownSelect(int widget, int index) OVERRIDE
+	void OnDropdownSelect(int widget, int index) override
 	{
 		switch (widget) {
 			case WID_O_NON_STOP:
@@ -2194,7 +2227,7 @@ public:
 		}
 	}
 
-	virtual void OnDragDrop(Point pt, int widget) OVERRIDE
+	void OnDragDrop(Point pt, int widget) override
 	{
 		switch (widget) {
 			case WID_O_ORDER_LIST: {
@@ -2227,7 +2260,7 @@ public:
 		}
 	}
 
-	virtual EventState OnHotkey(int hotkey) OVERRIDE
+	EventState OnHotkey(int hotkey) override
 	{
 		if (this->vehicle->owner != _local_company) return ES_NOT_HANDLED;
 
@@ -2248,7 +2281,7 @@ public:
 		return ES_HANDLED;
 	}
 
-	virtual void OnPlaceObject(Point pt, TileIndex tile) OVERRIDE
+	void OnPlaceObject(Point pt, TileIndex tile) override
 	{
 		if (this->goto_type == OPOS_GOTO) {
 			const Order cmd = GetOrderCmdFromTile(this->vehicle, tile);
@@ -2261,7 +2294,7 @@ public:
 		}
 	}
 
-	virtual bool OnVehicleSelect(const Vehicle *v) OVERRIDE
+	bool OnVehicleSelect(const Vehicle *v) override
 	{
 		/* v is vehicle getting orders. Only copy/clone orders if vehicle doesn't have any orders yet.
 		 * We disallow copying orders of other vehicles if we already have at least one order entry
@@ -2279,7 +2312,7 @@ public:
 		return true;
 	}
 
-	virtual void OnPlaceObjectAbort() OVERRIDE
+	void OnPlaceObjectAbort() override
 	{
 		this->goto_type = OPOS_NONE;
 		this->SetWidgetDirty(WID_O_GOTO);
@@ -2291,7 +2324,7 @@ public:
 		}
 	}
 
-	virtual void OnMouseDrag(Point pt, int widget) OVERRIDE
+	void OnMouseDrag(Point pt, int widget) override
 	{
 		if (this->selected_order != -1 && widget == WID_O_ORDER_LIST) {
 			/* An order is dragged.. */
@@ -2311,7 +2344,7 @@ public:
 		}
 	}
 
-	virtual void OnResize() OVERRIDE
+	void OnResize() override
 	{
 		/* Update the scroll bar */
 		this->vscroll->SetCapacityFromWidget(this, WID_O_ORDER_LIST);

@@ -152,6 +152,7 @@ static const StringID _program_insert_str[] = {
 	STR_TRACE_RESTRICT_LONG_RESERVE,
 	STR_TRACE_RESTRICT_WAIT_AT_PBS,
 	STR_TRACE_RESTRICT_SLOT_OP,
+	STR_TRACE_RESTRICT_REVERSE,
 	INVALID_STRING_ID
 };
 static const uint32 _program_insert_else_hide_mask    = 8;     ///< disable bitmask for else
@@ -159,6 +160,7 @@ static const uint32 _program_insert_or_if_hide_mask   = 4;     ///< disable bitm
 static const uint32 _program_insert_else_if_hide_mask = 2;     ///< disable bitmask for elif
 static const uint32 _program_wait_pbs_hide_mask = 0x100;       ///< disable bitmask for wait at PBS
 static const uint32 _program_slot_hide_mask = 0x200;           ///< disable bitmask for slot
+static const uint32 _program_reverse_hide_mask = 0x400;        ///< disable bitmask for reverse
 static const uint _program_insert_val[] = {
 	TRIT_COND_UNDEFINED,                               // if block
 	TRIT_COND_UNDEFINED | (TRCF_ELSE << 16),           // elif block
@@ -170,6 +172,7 @@ static const uint _program_insert_val[] = {
 	TRIT_LONG_RESERVE,                                 // long reserve
 	TRIT_WAIT_AT_PBS,                                  // wait at PBS signal
 	TRIT_SLOT,                                         // slot operation
+	TRIT_REVERSE,                                      // reverse
 };
 
 /** insert drop down list strings and values */
@@ -297,6 +300,21 @@ static const TraceRestrictDropDownListSet _train_status_value = {
 	_train_status_value_str, _train_status_value_val,
 };
 
+static const StringID _reverse_value_str[] = {
+	STR_TRACE_RESTRICT_REVERSE_SIG,
+	STR_TRACE_RESTRICT_REVERSE_SIG_CANCEL,
+	INVALID_STRING_ID
+};
+static const uint _reverse_value_val[] = {
+	TRRVF_REVERSE,
+	TRRVF_CANCEL_REVERSE,
+};
+
+/** value drop down list for wait at PBS types strings and values */
+static const TraceRestrictDropDownListSet _reverse_value = {
+	_reverse_value_str, _reverse_value_val,
+};
+
 /**
  * Get index of @p value in @p list_set
  * if @p value is not present, assert if @p missing_ok is false, otherwise return -1
@@ -353,6 +371,7 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		STR_TRACE_RESTRICT_LONG_RESERVE,
 		STR_TRACE_RESTRICT_WAIT_AT_PBS,
 		STR_TRACE_RESTRICT_SLOT_OP,
+		STR_TRACE_RESTRICT_REVERSE,
 		INVALID_STRING_ID,
 	};
 	static const uint val_action[] = {
@@ -362,6 +381,7 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		TRIT_LONG_RESERVE,
 		TRIT_WAIT_AT_PBS,
 		TRIT_SLOT,
+		TRIT_REVERSE,
 	};
 	static const TraceRestrictDropDownListSet set_action = {
 		str_action, val_action,
@@ -421,7 +441,7 @@ static const TraceRestrictDropDownListSet *GetTypeDropDownListSet(TraceRestrictG
 		if (_settings_client.gui.show_adv_tracerestrict_features) {
 			*hide_mask = 0;
 		} else {
-			*hide_mask = is_conditional ? 0x70000 : 0x30;
+			*hide_mask = is_conditional ? 0x70000 : 0x70;
 		}
 	}
 	return is_conditional ? &set_cond : &set_action;
@@ -461,7 +481,7 @@ static DropDownList *GetGroupDropDownList(Owner owner, GroupID group_id, int &se
 	const Group *g;
 	FOR_ALL_GROUPS(g) {
 		if (g->owner == owner && g->vehicle_type == VEH_TRAIN) {
-			*list.Append() = g;
+			list.push_back(g);
 		}
 	}
 
@@ -472,14 +492,14 @@ static DropDownList *GetGroupDropDownList(Owner owner, GroupID group_id, int &se
 	selected = -1;
 
 	if (group_id == DEFAULT_GROUP) selected = DEFAULT_GROUP;
-	*dlist->Append() = new DropDownListStringItem(STR_GROUP_DEFAULT_TRAINS, DEFAULT_GROUP, false);
+	dlist->push_back(new DropDownListStringItem(STR_GROUP_DEFAULT_TRAINS, DEFAULT_GROUP, false));
 
-	for (size_t i = 0; i < list.Length(); ++i) {
+	for (size_t i = 0; i < list.size(); ++i) {
 		const Group *g = list[i];
 		if (group_id == g->index) selected = group_id;
 		DropDownListParamStringItem *item = new DropDownListParamStringItem(STR_GROUP_NAME, g->index, false);
 		item->SetParam(0, g->index);
-		*dlist->Append() = item;
+		dlist->push_back(item);
 	}
 
 	return dlist;
@@ -503,11 +523,11 @@ DropDownList *GetSlotDropDownList(Owner owner, TraceRestrictSlotID slot_id, int 
 	const TraceRestrictSlot *slot;
 	FOR_ALL_TRACE_RESTRICT_SLOTS(slot) {
 		if (slot->owner == owner) {
-			*list.Append() = slot;
+			list.push_back(slot);
 		}
 	}
 
-	if (list.Length() == 0) return NULL;
+	if (list.size() == 0) return NULL;
 
 	list.ForceResort();
 	list.Sort(&SlotNameSorter);
@@ -515,12 +535,12 @@ DropDownList *GetSlotDropDownList(Owner owner, TraceRestrictSlotID slot_id, int 
 	DropDownList *dlist = new DropDownList();
 	selected = -1;
 
-	for (size_t i = 0; i < list.Length(); ++i) {
+	for (size_t i = 0; i < list.size(); ++i) {
 		const TraceRestrictSlot *s = list[i];
 		if (slot_id == s->index) selected = slot_id;
 		DropDownListParamStringItem *item = new DropDownListParamStringItem(STR_TRACE_RESTRICT_SLOT_NAME, s->index, false);
 		item->SetParam(0, s->index);
-		*dlist->Append() = item;
+		dlist->push_back(item);
 	}
 
 	return dlist;
@@ -1188,6 +1208,22 @@ static void DrawInstructionString(const TraceRestrictProgram *prog, TraceRestric
 				SetDParam(2, selected ? STR_TRACE_RESTRICT_WHITE : STR_EMPTY);
 				break;
 
+			case TRIT_REVERSE:
+				switch (static_cast<TraceRestrictReverseValueField>(GetTraceRestrictValue(item))) {
+					case TRRVF_REVERSE:
+						instruction_string = STR_TRACE_RESTRICT_REVERSE_SIG;
+						break;
+
+					case TRRVF_CANCEL_REVERSE:
+						instruction_string = STR_TRACE_RESTRICT_REVERSE_SIG_CANCEL;
+						break;
+
+					default:
+						NOT_REACHED();
+						break;
+				}
+				break;
+
 			default:
 				NOT_REACHED();
 				break;
@@ -1311,7 +1347,7 @@ public:
 						if (ElseIfInsertionDryRun(false)) disabled &= ~_program_insert_or_if_hide_mask;
 					}
 				}
-				if (!_settings_client.gui.show_adv_tracerestrict_features) hidden |= _program_slot_hide_mask | _program_wait_pbs_hide_mask;
+				if (!_settings_client.gui.show_adv_tracerestrict_features) hidden |= _program_slot_hide_mask | _program_wait_pbs_hide_mask | _program_reverse_hide_mask;
 
 				this->ShowDropDownListWithValue(&_program_insert, 0, true, TR_WIDGET_INSERT, disabled, hidden, 0);
 				break;
@@ -1480,6 +1516,10 @@ public:
 
 					case TRVT_TRAIN_STATUS:
 						this->ShowDropDownListWithValue(&_train_status_value, GetTraceRestrictValue(item), false, TR_WIDGET_VALUE_DROPDOWN, 0, 0, 0);
+						break;
+
+					case TRVT_REVERSE:
+						this->ShowDropDownListWithValue(&_reverse_value, GetTraceRestrictValue(item), false, TR_WIDGET_VALUE_DROPDOWN, 0, 0, 0);
 						break;
 
 					default:
@@ -2465,6 +2505,13 @@ private:
 									GetDropDownStringByValue(&_train_status_value, GetTraceRestrictValue(item));
 							break;
 
+						case TRVT_REVERSE:
+							right_sel->SetDisplayedPlane(DPR_VALUE_DROPDOWN);
+							this->EnableWidget(TR_WIDGET_VALUE_DROPDOWN);
+							this->GetWidget<NWidgetCore>(TR_WIDGET_VALUE_DROPDOWN)->widget_data =
+									GetDropDownStringByValue(&_reverse_value, GetTraceRestrictValue(item));
+							break;
+
 						default:
 							break;
 					}
@@ -2503,10 +2550,10 @@ private:
 
 		Company *c;
 		FOR_ALL_COMPANIES(c) {
-			*(list->Append()) = MakeCompanyDropDownListItem(c->index);
+			list->push_back(MakeCompanyDropDownListItem(c->index));
 			if (c->index == value) missing_ok = true;
 		}
-		*(list->Append()) = new DropDownListStringItem(STR_TRACE_RESTRICT_UNDEFINED_COMPANY, INVALID_COMPANY, false);
+		list->push_back(new DropDownListStringItem(STR_TRACE_RESTRICT_UNDEFINED_COMPANY, INVALID_COMPANY, false));
 		if (INVALID_COMPANY == value) missing_ok = true;
 
 		assert(missing_ok == true);
@@ -2798,18 +2845,18 @@ private:
 	{
 		if (!this->slots.NeedRebuild()) return;
 
-		this->slots.Clear();
+		this->slots.clear();
 
 		const TraceRestrictSlot *slot;
 		FOR_ALL_TRACE_RESTRICT_SLOTS(slot) {
 			if (slot->owner == owner) {
-				*(this->slots.Append()) = slot;
+				this->slots.push_back(slot);
 			}
 		}
 
 		this->slots.ForceResort();
 		this->slots.Sort(&SlotNameSorter);
-		this->slots.Compact();
+		this->slots.shrink_to_fit();
 		this->slots.RebuildDone();
 	}
 
@@ -3019,8 +3066,8 @@ public:
 
 		this->BuildSlotList(this->owner);
 
-		this->slot_sb->SetCount(this->slots.Length());
-		this->vscroll->SetCount(this->vehicles.Length());
+		this->slot_sb->SetCount(this->slots.size());
+		this->vscroll->SetCount(this->vehicles.size());
 
 		/* Disable the slot specific function when we select all vehicles */
 		this->SetWidgetsDisabledState(this->vli.index == ALL_TRAINS_TRACE_RESTRICT_SLOT_ID || _local_company != this->vli.company,
@@ -3056,7 +3103,7 @@ public:
 
 			case WID_TRSL_LIST_SLOTS: {
 				int y1 = r.top + WD_FRAMERECT_TOP;
-				int max = min(this->slot_sb->GetPosition() + this->slot_sb->GetCapacity(), this->slots.Length());
+				int max = min(this->slot_sb->GetPosition() + this->slot_sb->GetCapacity(), this->slots.size());
 				for (int i = this->slot_sb->GetPosition(); i < max; ++i) {
 					const TraceRestrictSlot *slot = this->slots[i];
 
@@ -3115,7 +3162,7 @@ public:
 
 			case WID_TRSL_LIST_SLOTS: { // Matrix Slot
 				uint id_s = this->slot_sb->GetScrolledRowFromWidget(pt.y, this, WID_TRSL_LIST_SLOTS, 0, this->tiny_step_height);
-				if (id_s >= this->slots.Length()) return;
+				if (id_s >= this->slots.size()) return;
 
 				this->slot_sel = this->vli.index = this->slots[id_s]->index;
 
@@ -3126,7 +3173,7 @@ public:
 
 			case WID_TRSL_LIST_VEHICLE: { // Matrix Vehicle
 				uint id_v = this->vscroll->GetScrolledRowFromWidget(pt.y, this, WID_TRSL_LIST_VEHICLE);
-				if (id_v >= this->vehicles.Length()) return; // click out of list bound
+				if (id_v >= this->vehicles.size()) return; // click out of list bound
 
 				const Vehicle *v = this->vehicles[id_v];
 				if (VehicleClicked(v)) break;
@@ -3183,7 +3230,7 @@ public:
 				this->SetDirty();
 
 				uint id_s = this->slot_sb->GetScrolledRowFromWidget(pt.y, this, WID_TRSL_LIST_SLOTS, 0, this->tiny_step_height);
-				if (id_s >= this->slots.Length()) return; // click out of list bound
+				if (id_s >= this->slots.size()) return; // click out of list bound
 
 				if (_ctrl_pressed) {
 					// remove from old group
@@ -3200,7 +3247,7 @@ public:
 				this->SetDirty();
 
 				uint id_v = this->vscroll->GetScrolledRowFromWidget(pt.y, this, WID_TRSL_LIST_VEHICLE);
-				if (id_v >= this->vehicles.Length()) return; // click out of list bound
+				if (id_v >= this->vehicles.size()) return; // click out of list bound
 
 				const Vehicle *v = this->vehicles[id_v];
 				if (!VehicleClicked(v) && vindex == v->index) {
@@ -3255,9 +3302,8 @@ public:
 		this->SetDirty();
 	}
 
-	virtual void OnTick()
+	virtual void OnGameTick() override
 	{
-		if (_pause_mode != PM_UNPAUSED) return;
 		if (this->slots.NeedResort() || this->vehicles.NeedResort()) {
 			this->SetDirty();
 		}
@@ -3285,7 +3331,7 @@ public:
 
 			case WID_TRSL_LIST_SLOTS: { // ... the list of slots.
 				uint id_s = this->slot_sb->GetScrolledRowFromWidget(pt.y, this, WID_TRSL_LIST_SLOTS, 0, this->tiny_step_height);
-				if (id_s < this->slots.Length()) new_slot_over = this->slots[id_s]->index;
+				if (id_s < this->slots.size()) new_slot_over = this->slots[id_s]->index;
 				break;
 			}
 		}

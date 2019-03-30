@@ -54,6 +54,7 @@ CommandProc CmdRemoveSingleSignal;
 CommandProc CmdTerraformLand;
 
 CommandProc CmdBuildObject;
+CommandProc CmdPurchaseLandArea;
 CommandProc CmdBuildHouse;
 CommandProc CmdSellLandArea;
 
@@ -85,7 +86,7 @@ CommandProc CmdPlantTree;
 
 CommandProc CmdMoveRailVehicle;
 
-CommandProc CmdBuildVehicle;
+CommandProcEx CmdBuildVehicle;
 CommandProc CmdSellVehicle;
 CommandProc CmdRefitVehicle;
 CommandProc CmdSendVehicleToDepot;
@@ -217,6 +218,7 @@ CommandProc CmdAddVehicleGroup;
 CommandProc CmdAddSharedVehicleGroup;
 CommandProc CmdRemoveAllVehiclesGroup;
 CommandProc CmdSetGroupReplaceProtection;
+CommandProc CmdSetGroupLivery;
 
 CommandProc CmdMoveOrder;
 CommandProc CmdChangeTimetable;
@@ -250,7 +252,7 @@ CommandProc CmdScheduledDispatchSetDelay;
 CommandProc CmdScheduledDispatchResetLastDispatch;
 
 CommandProc CmdAddPlan;
-CommandProc CmdAddPlanLine;
+CommandProcEx CmdAddPlanLine;
 CommandProc CmdRemovePlan;
 CommandProc CmdRemovePlanLine;
 CommandProc CmdChangePlanVisibility;
@@ -258,7 +260,7 @@ CommandProc CmdRenamePlan;
 
 CommandProc CmdDesyncCheck;
 
-#define DEF_CMD(proc, flags, type) {proc, #proc, (CommandFlags)flags, type}
+#define DEF_CMD(proc, flags, type) Command(proc, #proc, (CommandFlags)flags, type)
 
 /**
  * The master command table
@@ -280,6 +282,7 @@ static const Command _command_proc_table[] = {
 	DEF_CMD(CmdRemoveSingleSignal,                      CMD_AUTO, CMDT_LANDSCAPE_CONSTRUCTION), // CMD_REMOVE_SIGNALS
 	DEF_CMD(CmdTerraformLand,           CMD_ALL_TILES | CMD_AUTO, CMDT_LANDSCAPE_CONSTRUCTION), // CMD_TERRAFORM_LAND
 	DEF_CMD(CmdBuildObject,              CMD_NO_WATER | CMD_AUTO, CMDT_LANDSCAPE_CONSTRUCTION), // CMD_BUILD_OBJECT
+	DEF_CMD(CmdPurchaseLandArea,                     CMD_NO_TEST, CMDT_LANDSCAPE_CONSTRUCTION), // CMD_PURCHASE_LAND_AREA
 	DEF_CMD(CmdBuildHouse,   CMD_DEITY | CMD_NO_WATER | CMD_AUTO, CMDT_LANDSCAPE_CONSTRUCTION), // CMD_BUILD_HOUSE
 	DEF_CMD(CmdBuildTunnel,                 CMD_DEITY | CMD_AUTO, CMDT_LANDSCAPE_CONSTRUCTION), // CMD_BUILD_TUNNEL
 	DEF_CMD(CmdRemoveFromRailStation,                          0, CMDT_LANDSCAPE_CONSTRUCTION), // CMD_REMOVE_FROM_RAIL_STATION
@@ -302,7 +305,6 @@ static const Command _command_proc_table[] = {
 	DEF_CMD(CmdPlantTree,                               CMD_AUTO, CMDT_LANDSCAPE_CONSTRUCTION), // CMD_PLANT_TREE
 
 	DEF_CMD(CmdBuildVehicle,                       CMD_CLIENT_ID, CMDT_VEHICLE_CONSTRUCTION  ), // CMD_BUILD_VEHICLE
-	DEF_CMD(CmdBuildVehicle,         CMD_NO_TEST | CMD_CLIENT_ID, CMDT_VEHICLE_CONSTRUCTION  ), // CMD_BUILD_VEHICLE_NT
 	DEF_CMD(CmdSellVehicle,                        CMD_CLIENT_ID, CMDT_VEHICLE_CONSTRUCTION  ), // CMD_SELL_VEHICLE
 	DEF_CMD(CmdRefitVehicle,                                   0, CMDT_VEHICLE_CONSTRUCTION  ), // CMD_REFIT_VEHICLE
 	DEF_CMD(CmdSendVehicleToDepot,                             0, CMDT_VEHICLE_MANAGEMENT    ), // CMD_SEND_VEHICLE_TO_DEPOT
@@ -346,7 +348,7 @@ static const Command _command_proc_table[] = {
 
 	DEF_CMD(CmdTurnRoadVeh,                                    0, CMDT_VEHICLE_MANAGEMENT    ), // CMD_TURN_ROADVEH
 
-	DEF_CMD(CmdPause,                                 CMD_SERVER, CMDT_SERVER_SETTING        ), // CMD_PAUSE
+	DEF_CMD(CmdPause,                    CMD_SERVER | CMD_NO_EST, CMDT_SERVER_SETTING        ), // CMD_PAUSE
 
 	DEF_CMD(CmdBuyShareInCompany,                              0, CMDT_MONEY_MANAGEMENT      ), // CMD_BUY_SHARE_IN_COMPANY
 	DEF_CMD(CmdSellShareInCompany,                             0, CMDT_MONEY_MANAGEMENT      ), // CMD_SELL_SHARE_IN_COMPANY
@@ -370,7 +372,7 @@ static const Command _command_proc_table[] = {
 	DEF_CMD(CmdChangeBankBalance,                      CMD_DEITY, CMDT_MONEY_MANAGEMENT      ), // CMD_CHANGE_BANK_BALANCE
 	DEF_CMD(CmdBuildCanal,                              CMD_AUTO, CMDT_LANDSCAPE_CONSTRUCTION), // CMD_BUILD_CANAL
 	DEF_CMD(CmdCreateSubsidy,                          CMD_DEITY, CMDT_OTHER_MANAGEMENT      ), // CMD_CREATE_SUBSIDY
-	DEF_CMD(CmdCompanyCtrl,        CMD_SPECTATOR | CMD_CLIENT_ID, CMDT_SERVER_SETTING        ), // CMD_COMPANY_CTRL
+	DEF_CMD(CmdCompanyCtrl, CMD_SPECTATOR | CMD_CLIENT_ID | CMD_NO_EST, CMDT_SERVER_SETTING  ), // CMD_COMPANY_CTRL
 	DEF_CMD(CmdCustomNewsItem,          CMD_STR_CTRL | CMD_DEITY, CMDT_OTHER_MANAGEMENT      ), // CMD_CUSTOM_NEWS_ITEM
 	DEF_CMD(CmdCreateGoal,              CMD_STR_CTRL | CMD_DEITY, CMDT_OTHER_MANAGEMENT      ), // CMD_CREATE_GOAL
 	DEF_CMD(CmdRemoveGoal,                             CMD_DEITY, CMDT_OTHER_MANAGEMENT      ), // CMD_REMOVE_GOAL
@@ -433,6 +435,7 @@ static const Command _command_proc_table[] = {
 	DEF_CMD(CmdAddSharedVehicleGroup,                          0, CMDT_ROUTE_MANAGEMENT      ), // CMD_ADD_SHARE_VEHICLE_GROUP
 	DEF_CMD(CmdRemoveAllVehiclesGroup,                         0, CMDT_ROUTE_MANAGEMENT      ), // CMD_REMOVE_ALL_VEHICLES_GROUP
 	DEF_CMD(CmdSetGroupReplaceProtection,                      0, CMDT_ROUTE_MANAGEMENT      ), // CMD_SET_GROUP_REPLACE_PROTECTION
+	DEF_CMD(CmdSetGroupLivery,                                 0, CMDT_ROUTE_MANAGEMENT      ), // CMD_SET_GROUP_LIVERY
 	DEF_CMD(CmdMoveOrder,                                      0, CMDT_ROUTE_MANAGEMENT      ), // CMD_MOVE_ORDER
 	DEF_CMD(CmdChangeTimetable,                                0, CMDT_ROUTE_MANAGEMENT      ), // CMD_CHANGE_TIMETABLE
 	DEF_CMD(CmdBulkChangeTimetable,                            0, CMDT_ROUTE_MANAGEMENT      ), // CMD_BULK_CHANGE_TIMETABLE
@@ -634,8 +637,28 @@ static int _docommand_recursive = 0;
  */
 CommandCost DoCommand(const CommandContainer *container, DoCommandFlag flags)
 {
-	return DoCommand(container->tile, container->p1, container->p2, flags, container->cmd & CMD_ID_MASK, container->text.c_str());
+	return DoCommand(container->tile, container->p1, container->p2, flags, container->cmd & CMD_ID_MASK, container->text.c_str(), container->binary_length);
 }
+
+struct cmd_text_info_dumper {
+	const char *CommandTextInfo(const char *text, uint32 binary_length)
+	{
+		char *b = this->buffer;
+		const char *last = lastof(this->buffer);
+		if (text) {
+			b += seprintf(b, last, ", text");
+		}
+		if (binary_length) {
+			b += seprintf(b, last, ", bin length: %u", binary_length);
+		} else if (text) {
+			b += seprintf(b, last, ", str length: %u", (uint) strlen(text));
+		}
+		return this->buffer;
+	}
+
+private:
+	char buffer[64];
+};
 
 /*!
  * This function executes a given command with the parameters from the #CommandProc parameter list.
@@ -647,13 +670,14 @@ CommandCost DoCommand(const CommandContainer *container, DoCommandFlag flags)
  * @param flags Flags for the command and how to execute the command
  * @param cmd The command-id to execute (a value of the CMD_* enums)
  * @param text The text to pass
+ * @param binary_length The length of binary data in text
  * @see CommandProc
  * @return the cost
  */
-CommandCost DoCommand(TileIndex tile, uint32 p1, uint32 p2, DoCommandFlag flags, uint32 cmd, const char *text)
+CommandCost DoCommand(TileIndex tile, uint32 p1, uint32 p2, DoCommandFlag flags, uint32 cmd, const char *text, uint32 binary_length)
 {
-	SCOPE_INFO_FMT([=], "DoCommand: tile: %X (%d x %d), p1: 0x%X, p2: 0x%X, flags: 0x%X, company: %s, cmd: 0x%X (%s)",
-			tile, TileX(tile), TileY(tile), p1, p2, flags, scope_dumper().CompanyInfo(_current_company), cmd, GetCommandName(cmd));
+	SCOPE_INFO_FMT([=], "DoCommand: tile: %X (%d x %d), p1: 0x%X, p2: 0x%X, flags: 0x%X, company: %s, cmd: 0x%X (%s)%s",
+			tile, TileX(tile), TileY(tile), p1, p2, flags, scope_dumper().CompanyInfo(_current_company), cmd, GetCommandName(cmd), cmd_text_info_dumper().CommandTextInfo(text, binary_length));
 
 	CommandCost res;
 
@@ -661,15 +685,15 @@ CommandCost DoCommand(TileIndex tile, uint32 p1, uint32 p2, DoCommandFlag flags,
 	if (tile != 0 && (tile >= MapSize() || (!IsValidTile(tile) && (flags & DC_ALL_TILES) == 0))) return CMD_ERROR;
 
 	/* Chop of any CMD_MSG or other flags; we don't need those here */
-	CommandProc *proc = _command_proc_table[cmd & CMD_ID_MASK].proc;
+	const Command &command = _command_proc_table[cmd & CMD_ID_MASK];
 
 	_docommand_recursive++;
 
 	/* only execute the test call if it's toplevel, or we're not execing. */
 	if (_docommand_recursive == 1 || !(flags & DC_EXEC) ) {
-		if (_docommand_recursive == 1) _cleared_object_areas.Clear();
+		if (_docommand_recursive == 1) _cleared_object_areas.clear();
 		SetTownRatingTestMode(true);
-		res = proc(tile, flags & ~DC_EXEC, p1, p2, text);
+		res = command.Execute(tile, flags & ~DC_EXEC, p1, p2, text, binary_length);
 		SetTownRatingTestMode(false);
 		if (res.Failed()) {
 			goto error;
@@ -690,8 +714,8 @@ CommandCost DoCommand(TileIndex tile, uint32 p1, uint32 p2, DoCommandFlag flags,
 
 	/* Execute the command here. All cost-relevant functions set the expenses type
 	 * themselves to the cost object at some point */
-	if (_docommand_recursive == 1) _cleared_object_areas.Clear();
-	res = proc(tile, flags, p1, p2, text);
+	if (_docommand_recursive == 1) _cleared_object_areas.clear();
+	res = command.Execute(tile, flags, p1, p2, text, binary_length);
 	if (res.Failed()) {
 error:
 		_docommand_recursive--;
@@ -728,7 +752,7 @@ Money GetAvailableMoneyForCommand()
  */
 bool DoCommandP(const CommandContainer *container, bool my_cmd)
 {
-	return DoCommandP(container->tile, container->p1, container->p2, container->cmd, container->callback, container->text.c_str(), my_cmd);
+	return DoCommandP(container->tile, container->p1, container->p2, container->cmd, container->callback, container->text.c_str(), my_cmd, container->binary_length);
 }
 
 /*!
@@ -744,13 +768,13 @@ bool DoCommandP(const CommandContainer *container, bool my_cmd)
  * @param callback A callback function to call after the command is finished
  * @param text The text to pass
  * @param my_cmd indicator if the command is from a company or server (to display error messages for a user)
- * @param binary_length The quantity of binary data in text
+ * @param binary_length The length of binary data in text
  * @return \c true if the command succeeded, else \c false.
  */
 bool DoCommandP(TileIndex tile, uint32 p1, uint32 p2, uint32 cmd, CommandCallback *callback, const char *text, bool my_cmd, uint32 binary_length)
 {
-	SCOPE_INFO_FMT([=], "DoCommandP: tile: %X (%d x %d), p1: 0x%X, p2: 0x%X, company: %s, cmd: 0x%X (%s), my_cmd: %d",
-			tile, TileX(tile), TileY(tile), p1, p2, scope_dumper().CompanyInfo(_current_company), cmd, GetCommandName(cmd), my_cmd);
+	SCOPE_INFO_FMT([=], "DoCommandP: tile: %X (%d x %d), p1: 0x%X, p2: 0x%X, company: %s, cmd: 0x%X (%s), my_cmd: %d%s",
+			tile, TileX(tile), TileY(tile), p1, p2, scope_dumper().CompanyInfo(_current_company), cmd, GetCommandName(cmd), my_cmd, cmd_text_info_dumper().CommandTextInfo(text, binary_length));
 
 	/* Cost estimation is generally only done when the
 	 * local user presses shift while doing somthing.
@@ -760,7 +784,7 @@ bool DoCommandP(TileIndex tile, uint32 p1, uint32 p2, uint32 cmd, CommandCallbac
 	bool estimate_only = _shift_pressed && IsLocalCompany() &&
 			!_generating_world &&
 			!(cmd & CMD_NETWORK_COMMAND) &&
-			(cmd & CMD_ID_MASK) != CMD_PAUSE;
+			!(GetCommandFlags(cmd) & CMD_NO_EST);
 
 	/* We're only sending the command, so don't do
 	 * fancy things for 'success'. */
@@ -775,17 +799,15 @@ bool DoCommandP(TileIndex tile, uint32 p1, uint32 p2, uint32 cmd, CommandCallbac
 		return false;
 	}
 
-#ifdef ENABLE_NETWORK
 	/* Only set p2 when the command does not come from the network. */
 	if (!(cmd & CMD_NETWORK_COMMAND) && GetCommandFlags(cmd) & CMD_CLIENT_ID && p2 == 0) p2 = CLIENT_ID_SERVER;
-#endif
 
 	CommandCost res = DoCommandPInternal(tile, p1, p2, cmd, callback, text, my_cmd, estimate_only, binary_length);
 	if (res.Failed()) {
 		/* Only show the error when it's for us. */
 		StringID error_part1 = GB(cmd, 16, 16);
 		if (estimate_only || (IsLocalCompany() && error_part1 != 0 && my_cmd)) {
-			ShowErrorMessage(error_part1, res.GetErrorMessage(), WL_INFO, x, y, res.GetTextRefStackGRF(), res.GetTextRefStackSize(), res.GetTextRefStack());
+			ShowErrorMessage(error_part1, res.GetErrorMessage(), WL_INFO, x, y, res.GetTextRefStackGRF(), res.GetTextRefStackSize(), res.GetTextRefStack(), res.GetExtraErrorMessage());
 		}
 	} else if (estimate_only) {
 		ShowEstimatedCostOrIncome(res.GetCost(), x, y);
@@ -820,7 +842,6 @@ bool DoCommandP(TileIndex tile, uint32 p1, uint32 p2, uint32 cmd, CommandCallbac
 /**
  * Helper to deduplicate the code for returning.
  * @param cmd   the command cost to return.
- * @param clear whether to keep the storage changes or not.
  */
 #define return_dcpi(cmd) { _docommand_recursive = 0; return cmd; }
 
@@ -850,20 +871,18 @@ CommandCost DoCommandPInternal(TileIndex tile, uint32 p1, uint32 p2, uint32 cmd,
 	byte cmd_id = cmd & CMD_ID_MASK;
 	assert(cmd_id < lengthof(_command_proc_table));
 
-	CommandProc *proc = _command_proc_table[cmd_id].proc;
+	const Command &command = _command_proc_table[cmd_id];
 	/* Shouldn't happen, but you never know when someone adds
 	 * NULLs to the _command_proc_table. */
-	assert(proc != NULL);
+	assert(command.proc != NULL);
 
 	/* Command flags are used internally */
 	CommandFlags cmd_flags = GetCommandFlags(cmd);
 	/* Flags get send to the DoCommand */
 	DoCommandFlag flags = CommandFlagsToDCFlags(cmd_flags);
 
-#ifdef ENABLE_NETWORK
 	/* Make sure p2 is properly set to a ClientID. */
 	assert(!(cmd_flags & CMD_CLIENT_ID) || p2 != 0);
-#endif
 
 	/* Do not even think about executing out-of-bounds tile-commands */
 	if (tile != 0 && (tile >= MapSize() || (!IsValidTile(tile) && (cmd_flags & CMD_ALL_TILES) == 0))) return_dcpi(CMD_ERROR);
@@ -884,10 +903,10 @@ CommandCost DoCommandPInternal(TileIndex tile, uint32 p1, uint32 p2, uint32 cmd,
 	bool test_and_exec_can_differ = (cmd_flags & CMD_NO_TEST) != 0;
 
 	/* Test the command. */
-	_cleared_object_areas.Clear();
+	_cleared_object_areas.clear();
 	SetTownRatingTestMode(true);
 	BasePersistentStorageArray::SwitchMode(PSM_ENTER_TESTMODE);
-	CommandCost res = proc(tile, flags, p1, p2, text);
+	CommandCost res = command.Execute(tile, flags, p1, p2, text, binary_length);
 	BasePersistentStorageArray::SwitchMode(PSM_LEAVE_TESTMODE);
 	SetTownRatingTestMode(false);
 
@@ -910,7 +929,6 @@ CommandCost DoCommandPInternal(TileIndex tile, uint32 p1, uint32 p2, uint32 cmd,
 		return_dcpi(res);
 	}
 
-#ifdef ENABLE_NETWORK
 	/*
 	 * If we are in network, and the command is not from the network
 	 * send it to the command-queue and abort execution
@@ -925,14 +943,13 @@ CommandCost DoCommandPInternal(TileIndex tile, uint32 p1, uint32 p2, uint32 cmd,
 		 * reset the storages as we've not executed the command. */
 		return_dcpi(CommandCost());
 	}
-#endif /* ENABLE_NETWORK */
 	DEBUG(desync, 1, "cmd: date{%08x; %02x; %02x}; %02x; %06x; %08x; %08x; %08x; \"%s\" (%s)", _date, _date_fract, _tick_skip_counter, (int)_current_company, tile, p1, p2, cmd & ~CMD_NETWORK_COMMAND, text, GetCommandName(cmd));
 
 	/* Actually try and execute the command. If no cost-type is given
 	 * use the construction one */
-	_cleared_object_areas.Clear();
+	_cleared_object_areas.clear();
 	BasePersistentStorageArray::SwitchMode(PSM_ENTER_COMMAND);
-	CommandCost res2 = proc(tile, flags | DC_EXEC, p1, p2, text);
+	CommandCost res2 = command.Execute(tile, flags | DC_EXEC, p1, p2, text, binary_length);
 	BasePersistentStorageArray::SwitchMode(PSM_LEAVE_COMMAND);
 
 	if (cmd_id == CMD_COMPANY_CTRL) {

@@ -163,7 +163,7 @@ static void ChangeTimetableStartIntl(uint32 p1, DateTicksScaled date)
 
 /**
  * Callback for when a time has been chosen to start the time table
- * @param window the window related to the setting of the date
+ * @param w the window related to the setting of the date
  * @param date the actually chosen date
  */
 static void ChangeTimetableStartCallback(const Window *w, DateTicksScaled date)
@@ -230,7 +230,7 @@ struct TimetableWindow : Window {
 		return (travelling && v->lateness_counter < 0);
 	}
 
-	virtual void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize)
+	void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize) override
 	{
 		switch (widget) {
 			case WID_VT_ARRIVAL_DEPARTURE_PANEL:
@@ -272,7 +272,7 @@ struct TimetableWindow : Window {
 	 * @param data Information about the changed data.
 	 * @param gui_scope Whether the call is done from GUI scope. You may not do everything when not in GUI scope. See #InvalidateWindowData() for details.
 	 */
-	virtual void OnInvalidateData(int data = 0, bool gui_scope = true)
+	void OnInvalidateData(int data = 0, bool gui_scope = true) override
 	{
 		switch (data) {
 			case VIWD_AUTOREPLACE:
@@ -348,7 +348,7 @@ struct TimetableWindow : Window {
 		return ES_NOT_HANDLED;
 	}
 
-	virtual void OnPaint()
+	void OnPaint() override
 	{
 		const Vehicle *v = this->vehicle;
 		int selected = this->sel_index;
@@ -429,7 +429,7 @@ struct TimetableWindow : Window {
 		this->DrawWidgets();
 	}
 
-	virtual void SetStringParameters(int widget) const
+	void SetStringParameters(int widget) const override
 	{
 		switch (widget) {
 			case WID_VT_CAPTION: SetDParam(0, this->vehicle->index); break;
@@ -437,7 +437,7 @@ struct TimetableWindow : Window {
 		}
 	}
 
-	virtual void DrawWidget(const Rect &r, int widget) const
+	void DrawWidget(const Rect &r, int widget) const override
 	{
 		const Vehicle *v = this->vehicle;
 		int selected = this->sel_index;
@@ -591,7 +591,7 @@ struct TimetableWindow : Window {
 					/* We are running towards the first station so we can start the
 					 * timetable at the given time. */
 					SetDParam(0, STR_JUST_DATE_WALLCLOCK_TINY);
-					SetDParam(1, (v->timetable_start * _settings_game.economy.day_length_factor) + v->timetable_start_subticks);
+					SetDParam(1, (((DateTicksScaled) v->timetable_start) * _settings_game.economy.day_length_factor) + v->timetable_start_subticks);
 					DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_TIMETABLE_STATUS_START_AT);
 				} else if (!HasBit(v->vehicle_flags, VF_TIMETABLE_STARTED)) {
 					/* We aren't running on a timetable yet, so how can we be "on time"
@@ -704,7 +704,7 @@ struct TimetableWindow : Window {
 		return v->index | (order_number << 20) | (mtf << 28) | (clear ? 1 << 31 : 0);
 	}
 
-	virtual void OnClick(Point pt, int widget, int click_count)
+	void OnClick(Point pt, int widget, int click_count) override
 	{
 		const Vehicle *v = this->vehicle;
 
@@ -877,8 +877,8 @@ struct TimetableWindow : Window {
 							((!(order->IsType(OT_GOTO_STATION) || (order->IsType(OT_GOTO_DEPOT) && !(order->GetDepotActionType() & ODATFB_HALT))) ||
 								(order->GetNonStopType() & ONSF_NO_STOP_AT_DESTINATION_STATION)) && !order->IsType(OT_CONDITIONAL));
 				DropDownList *list = new DropDownList();
-				*list->Append() = new DropDownListStringItem(STR_TIMETABLE_LEAVE_NORMAL, OLT_NORMAL, leave_type_disabled);
-				*list->Append() = new DropDownListStringItem(STR_TIMETABLE_LEAVE_EARLY, OLT_LEAVE_EARLY, leave_type_disabled);
+				list->push_back(new DropDownListStringItem(STR_TIMETABLE_LEAVE_NORMAL, OLT_NORMAL, leave_type_disabled));
+				list->push_back(new DropDownListStringItem(STR_TIMETABLE_LEAVE_EARLY, OLT_LEAVE_EARLY, leave_type_disabled));
 				ShowDropDownList(this, list, order != NULL ? order->GetLeaveType() : -1, WID_VT_EXTRA);
 				break;
 			}
@@ -887,7 +887,7 @@ struct TimetableWindow : Window {
 		this->SetDirty();
 	}
 
-	virtual void OnDropdownSelect(int widget, int index) OVERRIDE
+	void OnDropdownSelect(int widget, int index) override
 	{
 		switch (widget) {
 			case WID_VT_EXTRA: {
@@ -903,7 +903,7 @@ struct TimetableWindow : Window {
 		}
 	}
 
-	virtual void OnQueryTextFinished(char *str)
+	void OnQueryTextFinished(char *str) override
 	{
 		if (str == NULL) return;
 
@@ -917,13 +917,14 @@ struct TimetableWindow : Window {
 				uint32 p1 = PackTimetableArgs(v, this->sel_index, this->query_is_speed_query);
 
 				uint64 val = StrEmpty(str) ? 0 : strtoul(str, NULL, 10);
+				uint32 p2;
 				if (this->query_is_speed_query) {
 					val = ConvertDisplaySpeedToKmhishSpeed(val);
+					p2 = minu(val, UINT16_MAX);
 				} else {
 					if (!_settings_client.gui.timetable_in_ticks) val *= DATE_UNIT_SIZE;
+					p2 = val;
 				}
-
-				uint32 p2 = minu(val, UINT16_MAX);
 
 				DoCommandP(0, p1, p2, (this->change_timetable_all ? CMD_BULK_CHANGE_TIMETABLE : CMD_CHANGE_TIMETABLE) | CMD_MSG(STR_ERROR_CAN_T_TIMETABLE_VEHICLE));
 				break;
@@ -936,12 +937,12 @@ struct TimetableWindow : Window {
 				if (val >= 0 && end && *end == 0) {
 					uint minutes = (val % 100) % 60;
 					uint hours = (val / 100) % 24;
-					val = MINUTES_DATE(MINUTES_DAY(CURRENT_MINUTE), hours, minutes);
-					val -= _settings_client.gui.clock_offset;
+					DateTicksScaled time = MINUTES_DATE(MINUTES_DAY(CURRENT_MINUTE), hours, minutes);
+					time -= _settings_client.gui.clock_offset;
 
-					if (val < (CURRENT_MINUTE - 60)) val += 60 * 24;
-					val *= _settings_client.gui.ticks_per_minute;
-					ChangeTimetableStartIntl(v->index | (this->set_start_date_all ? 1 << 20 : 0), val);
+					if (time < (CURRENT_MINUTE - 60)) time += 60 * 24;
+					time *= _settings_client.gui.ticks_per_minute;
+					ChangeTimetableStartIntl(v->index | (this->set_start_date_all ? 1 << 20 : 0), time);
 				}
 				break;
 			}
@@ -953,7 +954,7 @@ struct TimetableWindow : Window {
 		}
 	}
 
-	virtual void OnResize()
+	void OnResize() override
 	{
 		/* Update the scroll bar */
 		this->vscroll->SetCapacityFromWidget(this, WID_VT_TIMETABLE_PANEL, WD_FRAMERECT_TOP + WD_FRAMERECT_BOTTOM);

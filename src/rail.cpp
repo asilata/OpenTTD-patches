@@ -180,14 +180,120 @@ RailType GetTileRailType(TileIndex tile)
 }
 
 /**
- * Finds out if a company has a certain railtype available
+ * Return the rail type of tile and track piece, or INVALID_RAILTYPE if this is no rail tile and return_invalid is true.
+ */
+RailType GenericGetRailTypeByTrack(TileIndex t, Track track, bool return_invalid)
+{
+	if (IsPlainRailTile(t)) {
+		TrackBits bits = GetTrackBits(t);
+		if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) {
+			return (TrackToTrackBits(track) & TRACK_BIT_RT_1) ? GetRailType(t) : GetSecondaryRailType(t);
+		} else {
+			return GetRailType(t);
+		}
+	} else if (IsRailTunnelBridgeTile(t)) {
+		TrackBits bits = GetTunnelBridgeTrackBits(t);
+		if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) {
+			return (TrackToTrackBits(track) & GetAcrossBridgePossibleTrackBits(t)) ? GetRailType(t) : GetSecondaryRailType(t);
+		} else {
+			return GetRailType(t);
+		}
+	} else {
+		return return_invalid ? GetTileRailType(t) : GetRailType(t);
+	}
+}
+
+/**
+ * Return the rail type of tile and track piece, or INVALID_RAILTYPE if this is no rail tile and return_invalid is true.
+ */
+RailType GenericGetRailTypeByTrackBit(TileIndex t, TrackBits tb, bool return_invalid)
+{
+	if (IsPlainRailTile(t)) {
+		TrackBits bits = GetTrackBits(t);
+		if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) {
+			return (tb & TRACK_BIT_RT_1) ? GetRailType(t) : GetSecondaryRailType(t);
+		} else {
+			return GetRailType(t);
+		}
+	} else if (IsRailTunnelBridgeTile(t)) {
+		TrackBits bits = GetTunnelBridgeTrackBits(t);
+		if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) {
+			return (tb & (GetAcrossBridgePossibleTrackBits(t) | TRACK_BIT_WORMHOLE)) ? GetRailType(t) : GetSecondaryRailType(t);
+		} else {
+			return GetRailType(t);
+		}
+	} else {
+		return return_invalid ? GetTileRailType(t) : GetRailType(t);
+	}
+}
+
+/**
+ * Return the rail type of tile and entrance direction, or INVALID_RAILTYPE if this is no rail tile and return_invalid is true.
+ */
+RailType GenericGetRailTypeByEntryDir(TileIndex t, DiagDirection enterdir, bool return_invalid)
+{
+	if (IsPlainRailTile(t)) {
+		TrackBits bits = GetTrackBits(t);
+		if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) {
+			return (bits & DiagdirReachesTracks(enterdir) & TRACK_BIT_RT_1) ? GetRailType(t) : GetSecondaryRailType(t);
+		} else {
+			return GetRailType(t);
+		}
+	} else if (IsRailTunnelBridgeTile(t)) {
+		TrackBits bits = GetTunnelBridgeTrackBits(t);
+		if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) {
+			return (bits & DiagdirReachesTracks(enterdir) & GetAcrossBridgePossibleTrackBits(t)) ? GetRailType(t) : GetSecondaryRailType(t);
+		} else {
+			return GetRailType(t);
+		}
+	} else {
+		return return_invalid ? GetTileRailType(t) : GetRailType(t);
+	}
+}
+
+/**
+ * Return the secondary rail type of tile, or INVALID_RAILTYPE if this tile has no secondary rail type
+ */
+RailType GetTileSecondaryRailTypeIfValid(TileIndex t)
+{
+	if (IsPlainRailTile(t)) {
+		TrackBits bits = GetTrackBits(t);
+		if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) {
+			return GetSecondaryRailType(t);
+		} else {
+			return INVALID_RAILTYPE;
+		}
+	} else if (IsRailTunnelBridgeTile(t)) {
+		TrackBits bits = GetTunnelBridgeTrackBits(t);
+		if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) {
+			return GetSecondaryRailType(t);
+		} else {
+			return INVALID_RAILTYPE;
+		}
+	} else {
+		return INVALID_RAILTYPE;
+	}
+}
+
+/**
+ * Finds out if a company has a certain buildable railtype available.
  * @param company the company in question
  * @param railtype requested RailType
  * @return true if company has requested RailType available
  */
 bool HasRailtypeAvail(const CompanyID company, const RailType railtype)
 {
-	return HasBit(Company::Get(company)->avail_railtypes, railtype);
+	return !HasBit(_railtypes_hidden_mask, railtype) && HasBit(Company::Get(company)->avail_railtypes, railtype);
+}
+
+/**
+ * Test if any buildable railtype is available for a company.
+ * @param company the company in question
+ * @return true if company has any RailTypes available
+ */
+bool HasAnyRailtypesAvail(const CompanyID company)
+{
+	return (Company::Get(company)->avail_railtypes & ~_railtypes_hidden_mask) != 0;
 }
 
 /**
@@ -251,7 +357,7 @@ RailTypes AddDateIntroducedRailTypes(RailTypes current, Date date)
 
 /**
  * Get the rail types the given company can build.
- * @param c the company to get the rail types for.
+ * @param company the company to get the rail types for.
  * @return the rail types.
  */
 RailTypes GetCompanyRailtypes(CompanyID company)
@@ -294,7 +400,7 @@ RailType GetRailTypeByLabel(RailTypeLabel label, bool allow_alternate_labels)
 		/* Test if any rail type defines the label as an alternate. */
 		for (RailType r = RAILTYPE_BEGIN; r != RAILTYPE_END; r++) {
 			const RailtypeInfo *rti = GetRailTypeInfo(r);
-			if (rti->alternate_labels.Contains(label)) return r;
+			if (std::find(rti->alternate_labels.begin(), rti->alternate_labels.end(), label) != rti->alternate_labels.end()) return r;
 		}
 	}
 

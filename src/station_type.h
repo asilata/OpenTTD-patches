@@ -12,10 +12,9 @@
 #ifndef STATION_TYPE_H
 #define STATION_TYPE_H
 
-#include "core/smallvec_type.hpp"
 #include "core/smallstack_type.hpp"
 #include "tilearea_type.h"
-#include <list>
+#include "3rdparty/cpp-btree/btree_set.h"
 
 typedef uint16 StationID;
 typedef uint16 RoadStopID;
@@ -93,11 +92,12 @@ enum CatchmentArea {
 
 static const uint MAX_LENGTH_STATION_NAME_CHARS = 128; ///< The maximum length of a station name in characters including '\0'
 
-/** List of station IDs */
-typedef std::list<StationID> StationIDList;
+struct StationCompare {
+	bool operator() (const Station *lhs, const Station *rhs) const;
+};
 
 /** List of stations */
-typedef SmallVector<Station *, 2> StationList;
+typedef btree::btree_set<Station *, StationCompare> StationList;
 
 /**
  * Structure contains cached list of stations nearby. The list

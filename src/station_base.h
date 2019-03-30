@@ -20,6 +20,8 @@
 #include "linkgraph/linkgraph_type.h"
 #include "newgrf_storage.h"
 #include "3rdparty/cpp-btree/btree_map.h"
+#include "3rdparty/cpp-btree/btree_set.h"
+#include "bitmap_type.h"
 #include <map>
 #include <vector>
 
@@ -445,7 +447,11 @@ private:
 	}
 };
 
-typedef SmallVector<Industry *, 2> IndustryVector;
+struct IndustryCompare {
+	bool operator() (const Industry *lhs, const Industry *rhs) const;
+};
+
+typedef btree::btree_set<Industry *, IndustryCompare> IndustryList;
 
 /** Station data structure */
 struct Station FINAL : SpecializedStation<Station, false> {
@@ -468,6 +474,8 @@ public:
 
 	IndustryType indtype;   ///< Industry type to get the name from
 
+	BitmapTileArea catchment_tiles; ///< NOSAVE: Set of individual tiles covered by catchment area
+
 	StationHadVehicleOfTypeByte had_vehicle_of_type;
 
 	byte time_since_load;
@@ -477,7 +485,8 @@ public:
 	GoodsEntry goods[NUM_CARGO];  ///< Goods at this station
 	CargoTypes always_accepted;       ///< Bitmask of always accepted cargo types (by houses, HQs, industry tiles when industry doesn't accept cargo)
 
-	IndustryVector industries_near; ///< Cached list of industries near the station that can accept cargo, @see DeliverGoodsToIndustry()
+	IndustryList industries_near; ///< Cached list of industries near the station that can accept cargo, @see DeliverGoodsToIndustry()
+	Industry *industry;           ///< NOSAVE: Associated industry for neutral stations. (Rebuilt on load from Industry->st)
 
 	Station(TileIndex tile = INVALID_TILE);
 	~Station();
@@ -486,12 +495,16 @@ public:
 
 	void MarkTilesDirty(bool cargo_change) const;
 
-	void UpdateVirtCoord();
+	void UpdateVirtCoord() override;
 
-	/* virtual */ uint GetPlatformLength(TileIndex tile, DiagDirection dir) const;
-	/* virtual */ uint GetPlatformLength(TileIndex tile) const;
-	void RecomputeIndustriesNear();
-	static void RecomputeIndustriesNearForAll();
+	void MoveSign(TileIndex new_xy) override;
+
+	void AfterStationTileSetChange(bool adding, StationType type);
+
+	uint GetPlatformLength(TileIndex tile, DiagDirection dir) const override;
+	uint GetPlatformLength(TileIndex tile) const override;
+	void RecomputeCatchment();
+	static void RecomputeCatchmentForAll();
 
 	Dock *GetPrimaryDock() const { return docks; }
 
@@ -502,7 +515,15 @@ public:
 		return GetCatchmentRectUsingRadius(this->GetCatchmentRadius());
 	}
 
-	/* virtual */ inline bool TileBelongsToRailStation(TileIndex tile) const
+	bool CatchmentCoversTown(TownID t) const;
+	void RemoveFromAllNearbyLists();
+
+	inline bool TileIsInCatchment(TileIndex tile) const
+	{
+		return this->catchment_tiles.HasTile(tile);
+	}
+
+	inline bool TileBelongsToRailStation(TileIndex tile) const override
 	{
 		return IsRailStationTile(tile) && GetStationIndex(tile) == this->index;
 	}
@@ -513,10 +534,11 @@ public:
 	}
 
 	bool IsDockingTile(TileIndex tile) const;
+	bool IsWithinRangeOfDockingTile(TileIndex tile, uint max_distance) const;
 
-	/* virtual */ uint32 GetNewGRFVariable(const ResolverObject &object, byte variable, byte parameter, bool *available) const;
+	uint32 GetNewGRFVariable(const ResolverObject &object, byte variable, byte parameter, bool *available) const override;
 
-	/* virtual */ void GetTileArea(TileArea *ta, StationType type) const;
+	void GetTileArea(TileArea *ta, StationType type) const override;
 };
 
 #define FOR_ALL_STATIONS(var) FOR_ALL_BASE_STATIONS_OF_TYPE(Station, var)
@@ -529,7 +551,7 @@ private:
 public:
 	/**
 	 * Construct the iterator.
-	 * @param ta Area, i.e. begin point and width/height of to-be-iterated area.
+	 * @param st Station the airport is part of.
 	 */
 	AirportTileIterator(const Station *st) : OrthogonalTileIterator(st->airport), st(st)
 	{
@@ -550,5 +572,7 @@ public:
 		return new AirportTileIterator(*this);
 	}
 };
+
+void RebuildStationKdtree();
 
 #endif /* STATION_BASE_H */

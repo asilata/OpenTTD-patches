@@ -65,6 +65,9 @@ extern void DrawTrackBits(TileInfo *ti, TrackBits track);
 extern void DrawRoadBits(TileInfo *ti);
 extern const RoadBits _invalid_tileh_slopes_road[2][15];
 
+extern CommandCost IsRailStationBridgeAboveOk(TileIndex tile, const StationSpec *statspec, byte layout, TileIndex northern_bridge_end, TileIndex southern_bridge_end, int bridge_height,
+		BridgeType bridge_type, TransportType bridge_transport_type);
+
 /**
  * Mark bridge tiles dirty.
  * Note: The bridge does not need to exist, everything is passed via parameters.
@@ -213,40 +216,27 @@ static inline const PalSpriteID *GetBridgeSpriteTable(int index, BridgePieces ta
 
 
 /**
- * Determines the foundation for the north bridge head, and tests if the resulting slope is valid.
+ * Determines the foundation for the bridge head, and tests if the resulting slope is valid.
  *
+ * @param bridge_piece Direction of the bridge head.
  * @param axis Axis of the bridge
  * @param tileh Slope of the tile under the north bridge head; returns slope on top of foundation
  * @param z TileZ corresponding to tileh, gets modified as well
  * @return Error or cost for bridge foundation
  */
-static CommandCost CheckBridgeSlopeNorth(Axis axis, Slope *tileh, int *z)
+static CommandCost CheckBridgeSlope(BridgePieces bridge_piece, Axis axis, Slope *tileh, int *z)
 {
+	assert(bridge_piece == BRIDGE_PIECE_NORTH || bridge_piece == BRIDGE_PIECE_SOUTH);
+
 	Foundation f = GetBridgeFoundation(*tileh, axis);
 	*z += ApplyFoundationToSlope(f, tileh);
 
-	Slope valid_inclined = (axis == AXIS_X ? SLOPE_NE : SLOPE_NW);
-	if ((*tileh != SLOPE_FLAT) && (*tileh != valid_inclined)) return CMD_ERROR;
-
-	if (f == FOUNDATION_NONE) return CommandCost();
-
-	return CommandCost(EXPENSES_CONSTRUCTION, _price[PR_BUILD_FOUNDATION]);
-}
-
-/**
- * Determines the foundation for the south bridge head, and tests if the resulting slope is valid.
- *
- * @param axis Axis of the bridge
- * @param tileh Slope of the tile under the south bridge head; returns slope on top of foundation
- * @param z TileZ corresponding to tileh, gets modified as well
- * @return Error or cost for bridge foundation
- */
-static CommandCost CheckBridgeSlopeSouth(Axis axis, Slope *tileh, int *z)
-{
-	Foundation f = GetBridgeFoundation(*tileh, axis);
-	*z += ApplyFoundationToSlope(f, tileh);
-
-	Slope valid_inclined = (axis == AXIS_X ? SLOPE_SW : SLOPE_SE);
+	Slope valid_inclined;
+	if (bridge_piece == BRIDGE_PIECE_NORTH) {
+		valid_inclined = (axis == AXIS_X ? SLOPE_NE : SLOPE_NW);
+	} else {
+		valid_inclined = (axis == AXIS_X ? SLOPE_SW : SLOPE_SE);
+	}
 	if ((*tileh != SLOPE_FLAT) && (*tileh != valid_inclined)) return CMD_ERROR;
 
 	if (f == FOUNDATION_NONE) return CommandCost();
@@ -258,6 +248,7 @@ static CommandCost CheckBridgeSlopeSouth(Axis axis, Slope *tileh, int *z)
  * Is a bridge of the specified type and length available?
  * @param bridge_type Wanted type of bridge.
  * @param bridge_len  Wanted length of the bridge.
+ * @param flags       Type of operation.
  * @return A succeeded (the requested bridge is available) or failed (it cannot be built) command.
  */
 CommandCost CheckBridgeAvailability(BridgeType bridge_type, uint bridge_len, DoCommandFlag flags)
@@ -368,8 +359,8 @@ CommandCost CmdBuildBridge(TileIndex end_tile, DoCommandFlag flags, uint32 p1, u
 	Slope tileh_start = GetTileSlope(tile_start, &z_start);
 	Slope tileh_end = GetTileSlope(tile_end, &z_end);
 
-	CommandCost terraform_cost_north = CheckBridgeSlopeNorth(direction, &tileh_start, &z_start);
-	CommandCost terraform_cost_south = CheckBridgeSlopeSouth(direction, &tileh_end,   &z_end);
+	CommandCost terraform_cost_north = CheckBridgeSlope(BRIDGE_PIECE_NORTH, direction, &tileh_start, &z_start);
+	CommandCost terraform_cost_south = CheckBridgeSlope(BRIDGE_PIECE_SOUTH, direction, &tileh_end,   &z_end);
 
 	/* Aqueducts can't be built of flat land. */
 	if (transport_type == TRANSPORT_WATER && (tileh_start == SLOPE_FLAT || tileh_end == SLOPE_FLAT)) return_cmd_error(STR_ERROR_LAND_SLOPED_IN_WRONG_DIRECTION);
@@ -419,6 +410,31 @@ CommandCost CmdBuildBridge(TileIndex end_tile, DoCommandFlag flags, uint32 p1, u
 		/* If bridge belonged to bankrupt company, it has a new owner now */
 		is_new_owner = (owner == OWNER_NONE);
 		if (is_new_owner) owner = company;
+
+		TileIndexDiff delta = (direction == AXIS_X ? TileDiffXY(1, 0) : TileDiffXY(0, 1));
+		for (TileIndex tile = tile_start + delta; tile != tile_end; tile += delta) {
+			if (IsTileType(tile, MP_STATION)) {
+				switch (GetStationType(tile)) {
+					case STATION_RAIL:
+					case STATION_WAYPOINT: {
+						CommandCost ret = IsRailStationBridgeAboveOk(tile, GetStationSpec(tile), GetStationGfx(tile), tile_start, tile_end, z_start + 1, bridge_type, transport_type);
+						if (ret.Failed()) {
+							if (ret.GetErrorMessage() != INVALID_STRING_ID) return ret;
+							ret = DoCommand(tile, 0, 0, flags, CMD_LANDSCAPE_CLEAR);
+							if (ret.Failed()) return ret;
+						}
+						break;
+					}
+
+					default:
+						if (!_settings_game.construction.allow_stations_under_bridges) {
+							CommandCost ret = DoCommand(tile, 0, 0, flags, CMD_LANDSCAPE_CLEAR);
+							if (ret.Failed()) return ret;
+						}
+						break;
+				}
+			}
+		}
 
 		is_upgrade = true;
 	} else {
@@ -509,12 +525,9 @@ CommandCost CmdBuildBridge(TileIndex end_tile, DoCommandFlag flags, uint32 p1, u
 
 						case STATION_RAIL:
 						case STATION_WAYPOINT: {
-							const StationSpec *statspec = GetStationSpec(tile);
-							if (statspec && HasBit(statspec->internal_flags, SSIF_BRIDGE_HEIGHTS_SET)) {
-								uint layout = GetStationGfx (tile);
-								assert(layout < 8);
-								if (GetTileMaxZ(tile) + statspec->bridge_height[layout] > z_start + 1) goto not_valid_below;
-							} else if (!_settings_game.construction.allow_stations_under_bridges) {
+							CommandCost ret = IsRailStationBridgeAboveOk(tile, GetStationSpec(tile), GetStationGfx(tile), tile_start, tile_end, z_start + 1, bridge_type, transport_type);
+							if (ret.Failed()) {
+								if (ret.GetErrorMessage() != INVALID_STRING_ID) return ret;
 								goto not_valid_below;
 							}
 							break;
@@ -558,10 +571,11 @@ CommandCost CmdBuildBridge(TileIndex end_tile, DoCommandFlag flags, uint32 p1, u
 		Company *c = Company::GetIfValid(company);
 		switch (transport_type) {
 			case TRANSPORT_RAIL:
+				if (is_upgrade) SubtractRailTunnelBridgeInfrastructure(tile_start, tile_end);
 				/* Add to company infrastructure count if required. */
 				MakeRailBridgeRamp(tile_start, owner, bridge_type, dir,                 railtype, is_upgrade);
 				MakeRailBridgeRamp(tile_end,   owner, bridge_type, ReverseDiagDir(dir), railtype, is_upgrade);
-				if (is_new_owner && c != NULL) c->infrastructure.rail[railtype] += (bridge_len * TUNNELBRIDGE_TRACKBIT_FACTOR) + GetTunnelBridgeHeadOnlyRailInfrastructureCount(tile_start) + GetTunnelBridgeHeadOnlyRailInfrastructureCount(tile_end);
+				AddRailTunnelBridgeInfrastructure(tile_start, tile_end);
 				break;
 
 			case TRANSPORT_ROAD: {
@@ -875,9 +889,8 @@ CommandCost CmdBuildTunnel(TileIndex start_tile, DoCommandFlag flags, uint32 p1,
 		 * Do this for all tiles (like trees), not only objects. */
 		ClearedObjectArea *coa = FindClearedObject(end_tile);
 		if (coa == NULL) {
-			coa = _cleared_object_areas.Append();
-			coa->first_tile = end_tile;
-			coa->area = TileArea(end_tile, 1, 1);
+			/*C++17: coa = &*/ _cleared_object_areas.push_back({end_tile, TileArea(end_tile, 1, 1)});
+			coa = &_cleared_object_areas.back();
 		}
 
 		/* Hide the tile from the terraforming command */
@@ -893,12 +906,14 @@ CommandCost CmdBuildTunnel(TileIndex start_tile, DoCommandFlag flags, uint32 p1,
 		 * Deliberately clear the coa pointer to avoid leaving dangling pointers which could
 		 * inadvertently be dereferenced.
 		 */
-		assert(coa >= _cleared_object_areas.Begin() && coa < _cleared_object_areas.End());
-		size_t coa_index = coa - _cleared_object_areas.Begin();
+		ClearedObjectArea *begin = _cleared_object_areas.data();
+		assert(coa >= begin && coa < begin + _cleared_object_areas.size());
+		size_t coa_index = coa - begin;
+		assert(coa_index < UINT_MAX); // more than 2**32 cleared areas would be a bug in itself
 		coa = NULL;
 
 		ret = DoCommand(end_tile, end_tileh & start_tileh, 0, flags, CMD_TERRAFORM_LAND);
-		_cleared_object_areas[coa_index].first_tile = old_first_tile;
+		_cleared_object_areas[(uint)coa_index].first_tile = old_first_tile;
 		if (ret.Failed()) return_cmd_error(STR_ERROR_UNABLE_TO_EXCAVATE_LAND);
 		cost.AddCost(ret);
 	}
@@ -1132,7 +1147,9 @@ static CommandCost DoClearBridge(TileIndex tile, DoCommandFlag flags)
 	if (rail) {
 		tile_tracks = GetCustomBridgeHeadTrackBits(tile);
 		endtile_tracks = GetCustomBridgeHeadTrackBits(endtile);
-		cost.AddCost(RailClearCost(GetRailType(tile)) * (CountBits(tile_tracks) + CountBits(endtile_tracks) - 2));
+		cost.AddCost(RailClearCost(GetRailType(tile)) * (CountBits(GetPrimaryTunnelBridgeTrackBits(tile)) + CountBits(GetPrimaryTunnelBridgeTrackBits(endtile)) - 2));
+		if (GetSecondaryTunnelBridgeTrackBits(tile)) cost.AddCost(RailClearCost(GetSecondaryRailType(tile)));
+		if (GetSecondaryTunnelBridgeTrackBits(endtile)) cost.AddCost(RailClearCost(GetSecondaryRailType(endtile)));
 	}
 
 	Money base_cost = (GetTunnelBridgeTransportType(tile) != TRANSPORT_WATER) ? _price[PR_CLEAR_BRIDGE] : _price[PR_CLEAR_AQUEDUCT];
@@ -1145,7 +1162,7 @@ static CommandCost DoClearBridge(TileIndex tile, DoCommandFlag flags)
 		/* read this value before actual removal of bridge */
 		Owner owner = GetTileOwner(tile);
 		int height = GetBridgeHeight(tile);
-		SmallVector<Train *, 2> vehicles_affected;
+		std::vector<Train *> vehicles_affected;
 
 		if (rail) {
 			auto find_train_reservations = [&vehicles_affected](TileIndex tile) {
@@ -1155,7 +1172,7 @@ static CommandCost DoClearBridge(TileIndex tile, DoCommandFlag flags)
 					Train *v = GetTrainForReservation(tile, track);
 					if (v != NULL) {
 						FreeTrainTrackReservation(v);
-						*vehicles_affected.Append() = v;
+						vehicles_affected.push_back(v);
 					}
 				}
 			};
@@ -1165,12 +1182,7 @@ static CommandCost DoClearBridge(TileIndex tile, DoCommandFlag flags)
 
 		/* Update company infrastructure counts. */
 		if (rail) {
-			if (Company::IsValidID(owner)) {
-				Company::Get(owner)->infrastructure.rail[GetRailType(tile)] -= (middle_len * TUNNELBRIDGE_TRACKBIT_FACTOR) + GetTunnelBridgeHeadOnlyRailInfrastructureCount(tile) + GetTunnelBridgeHeadOnlyRailInfrastructureCount(endtile);
-				if (IsTunnelBridgeWithSignalSimulation(tile)) { // handle tunnel/bridge signals.
-					Company::Get(GetTileOwner(tile))->infrastructure.signal -= GetTunnelBridgeSignalSimulationSignalCount(tile, endtile);
-				}
-			}
+			SubtractRailTunnelBridgeInfrastructure(tile, endtile);
 		} else if (GetTunnelBridgeTransportType(tile) == TRANSPORT_ROAD) {
 			SubtractRoadTunnelBridgeInfrastructure(tile, endtile);
 		} else { // Aqueduct
@@ -1210,7 +1222,7 @@ static CommandCost DoClearBridge(TileIndex tile, DoCommandFlag flags)
 			notify_track_change(tile, direction, tile_tracks);
 			notify_track_change(endtile, ReverseDiagDir(direction), endtile_tracks);
 
-			for (uint i = 0; i < vehicles_affected.Length(); ++i) {
+			for (uint i = 0; i < vehicles_affected.size(); ++i) {
 				TryPathReserve(vehicles_affected[i], true);
 			}
 		}
@@ -1625,7 +1637,7 @@ static void DrawTile_TunnelBridge(TileInfo *ti)
 		}
 		if (transport_type == TRANSPORT_RAIL && IsRailCustomBridgeHead(ti->tile)) {
 			DrawTrackBits(ti, GetCustomBridgeHeadTrackBits(ti->tile));
-			if (HasRailCatenaryDrawn(GetRailType(ti->tile))) {
+			if (HasRailCatenaryDrawn(GetRailType(ti->tile), GetTileSecondaryRailTypeIfValid(ti->tile))) {
 				DrawRailCatenary(ti);
 			}
 
@@ -1813,6 +1825,34 @@ static BridgePieces CalcBridgePiece(uint north, uint south)
 		return south & 1 ? BRIDGE_PIECE_INNER_NORTH : BRIDGE_PIECE_INNER_SOUTH;
 	} else {
 		return north & 1 ? BRIDGE_PIECE_MIDDLE_EVEN : BRIDGE_PIECE_MIDDLE_ODD;
+	}
+}
+
+BridgePiecePillarFlags GetBridgeTilePillarFlags(TileIndex tile, TileIndex northern_bridge_end, TileIndex southern_bridge_end, BridgeType bridge_type, TransportType bridge_transport_type)
+{
+	if (bridge_transport_type == TRANSPORT_WATER) return BPPF_ALL_CORNERS;
+
+	BridgePieces piece = CalcBridgePiece(
+		GetTunnelBridgeLength(tile, northern_bridge_end) + 1,
+		GetTunnelBridgeLength(tile, southern_bridge_end) + 1
+	);
+	assert(piece < BRIDGE_PIECE_HEAD);
+
+	const BridgeSpec *spec = GetBridgeSpec(bridge_type);
+	const Axis axis = TileX(northern_bridge_end) == TileX(southern_bridge_end) ? AXIS_Y : AXIS_X;
+	if (!HasBit(spec->ctrl_flags, BSCF_INVALID_PILLAR_FLAGS)) {
+		return (BridgePiecePillarFlags) spec->pillar_flags[piece * 2 + (axis == AXIS_Y ? 1 : 0)];
+	} else {
+		uint base_offset;
+		if (bridge_transport_type == TRANSPORT_RAIL) {
+			base_offset = GetRailTypeInfo(GetRailType(southern_bridge_end))->bridge_offset;
+		} else {
+			base_offset = 8;
+		}
+
+		const PalSpriteID *psid = base_offset + GetBridgeSpriteTable(bridge_type, piece);
+		if (axis == AXIS_Y) psid += 4;
+		return (BridgePiecePillarFlags) (psid[2].sprite != 0 ? BPPF_ALL_CORNERS : 0);
 	}
 }
 
@@ -2062,9 +2102,16 @@ static void GetTileDesc_TunnelBridge(TileIndex tile, TileDesc *td)
 	}
 
 	if (tt == TRANSPORT_RAIL) {
-		const RailtypeInfo *rti = GetRailTypeInfo(GetRailType(tile));
+		RailType rt = GetRailType(tile);
+		const RailtypeInfo *rti = GetRailTypeInfo(rt);
 		td->rail_speed = rti->max_speed;
 		td->railtype = rti->strings.name;
+		RailType secondary_rt = GetTileSecondaryRailTypeIfValid(tile);
+		if (secondary_rt != rt && secondary_rt != INVALID_RAILTYPE) {
+			const RailtypeInfo *secondary_rti = GetRailTypeInfo(secondary_rt);
+			td->rail_speed2 = secondary_rti->max_speed;
+			td->railtype2 = secondary_rti->strings.name;
+		}
 
 		if (!IsTunnel(tile)) {
 			uint16 spd = GetBridgeSpec(GetBridgeType(tile))->speed;
@@ -2197,6 +2244,56 @@ void SubtractRoadTunnelBridgeInfrastructure(TileIndex begin, TileIndex end) {
 	UpdateRoadTunnelBridgeInfrastructure(begin, end, false);
 }
 
+static void UpdateRailTunnelBridgeInfrastructure(Company *c, TileIndex begin, TileIndex end, bool add) {
+	const uint middle_len = GetTunnelBridgeLength(begin, end) * TUNNELBRIDGE_TRACKBIT_FACTOR;
+
+	if (c != NULL) {
+		uint primary_count = middle_len + GetTunnelBridgeHeadOnlyPrimaryRailInfrastructureCount(begin) + GetTunnelBridgeHeadOnlyPrimaryRailInfrastructureCount(end);
+		if (add) {
+			c->infrastructure.rail[GetRailType(begin)] += primary_count;
+		} else {
+			c->infrastructure.rail[GetRailType(begin)] -= primary_count;
+		}
+
+		auto add_secondary_railtype = [&](TileIndex t) {
+			uint secondary_count = GetTunnelBridgeHeadOnlySecondaryRailInfrastructureCount(t);
+			if (secondary_count) {
+				if (add) {
+					c->infrastructure.rail[GetSecondaryRailType(t)] += secondary_count;
+				} else {
+					c->infrastructure.rail[GetSecondaryRailType(t)] -= secondary_count;
+				}
+			}
+		};
+		add_secondary_railtype(begin);
+		add_secondary_railtype(end);
+
+		if (IsTunnelBridgeWithSignalSimulation(begin)) {
+			if (add) {
+				c->infrastructure.signal += GetTunnelBridgeSignalSimulationSignalCount(begin, end);
+			} else {
+				c->infrastructure.signal -= GetTunnelBridgeSignalSimulationSignalCount(begin, end);
+			}
+		}
+	}
+}
+
+void AddRailTunnelBridgeInfrastructure(Company *c, TileIndex begin, TileIndex end) {
+	UpdateRailTunnelBridgeInfrastructure(c, begin, end, true);
+}
+
+void SubtractRailTunnelBridgeInfrastructure(Company *c, TileIndex begin, TileIndex end) {
+	UpdateRailTunnelBridgeInfrastructure(c, begin, end, false);
+}
+
+void AddRailTunnelBridgeInfrastructure(TileIndex begin, TileIndex end) {
+	UpdateRailTunnelBridgeInfrastructure(Company::GetIfValid(GetTileOwner(begin)), begin, end, true);
+}
+
+void SubtractRailTunnelBridgeInfrastructure(TileIndex begin, TileIndex end) {
+	UpdateRailTunnelBridgeInfrastructure(Company::GetIfValid(GetTileOwner(begin)), begin, end, false);
+}
+
 static void ChangeTileOwner_TunnelBridge(TileIndex tile, Owner old_owner, Owner new_owner)
 {
 	const TileIndex other_end = GetOtherTunnelBridgeEnd(tile);
@@ -2225,24 +2322,17 @@ static void ChangeTileOwner_TunnelBridge(TileIndex tile, Owner old_owner, Owner 
 	 * No need to dirty windows here, we'll redraw the whole screen anyway. */
 
 	Company *old = Company::Get(old_owner);
-	if (tt == TRANSPORT_RAIL) {
-		/* Set number of middle pieces to zero if it's the southern tile as we
-		 * don't want to update the infrastructure counts twice. */
-		const uint num_pieces = GetTunnelBridgeHeadOnlyRailInfrastructureCount(tile) + (tile < other_end ? GetTunnelBridgeLength(tile, other_end) * TUNNELBRIDGE_TRACKBIT_FACTOR : 0);
-		old->infrastructure.rail[GetRailType(tile)] -= num_pieces;
-		if (new_owner != INVALID_OWNER) Company::Get(new_owner)->infrastructure.rail[GetRailType(tile)] += num_pieces;
-	} else if (tt == TRANSPORT_WATER) {
+	if (tt == TRANSPORT_RAIL && tile < other_end) {
+		/* Only execute this for one of the two ends */
+		SubtractRailTunnelBridgeInfrastructure(old, tile, other_end);
+		if (new_owner != INVALID_OWNER) AddRailTunnelBridgeInfrastructure(Company::Get(new_owner), tile, other_end);
+	}
+	if (tt == TRANSPORT_WATER) {
 		/* Set number of pieces to zero if it's the southern tile as we
 		 * don't want to update the infrastructure counts twice. */
 		const uint num_pieces = tile < other_end ? (GetTunnelBridgeLength(tile, other_end) + 2) * TUNNELBRIDGE_TRACKBIT_FACTOR : 0;
 		old->infrastructure.water -= num_pieces;
 		if (new_owner != INVALID_OWNER) Company::Get(new_owner)->infrastructure.water += num_pieces;
-	}
-
-	if (IsTunnelBridgeWithSignalSimulation(tile) && tile < other_end) {
-		uint num_sigs = GetTunnelBridgeSignalSimulationSignalCount(tile, other_end);
-		Company::Get(old_owner)->infrastructure.signal -= num_sigs;
-		if (new_owner != INVALID_OWNER) Company::Get(new_owner)->infrastructure.signal += num_sigs;
 	}
 
 	if (new_owner != INVALID_OWNER) {
@@ -2380,6 +2470,7 @@ static VehicleEnterTileStatus VehicleEnter_TunnelBridge(Vehicle *v, TileIndex ti
 					if (frame != TILE_SIZE) return VETSB_CONTINUE;
 					Train *t = Train::From(v);
 					t->track = TRACK_BIT_WORMHOLE;
+					SetBit(t->First()->flags, VRF_CONSIST_SPEED_REDUCTION);
 					ClrBit(t->gv_flags, GVF_GOINGUP_BIT);
 					ClrBit(t->gv_flags, GVF_GOINGDOWN_BIT);
 					break;
@@ -2467,6 +2558,7 @@ static VehicleEnterTileStatus VehicleEnter_TunnelBridge(Vehicle *v, TileIndex ti
 					t->direction = bridge_dir;
 					t->track = TRACK_BIT_WORMHOLE;
 				}
+				SetBit(t->First()->flags, VRF_CONSIST_SPEED_REDUCTION);
 				ClrBit(t->gv_flags, GVF_GOINGUP_BIT);
 				ClrBit(t->gv_flags, GVF_GOINGDOWN_BIT);
 				return VETSB_ENTERED_WORMHOLE;
@@ -2513,11 +2605,11 @@ static CommandCost TerraformTile_TunnelBridge(TileIndex tile, DoCommandFlag flag
 
 		/* Check if new slope is valid for bridges in general (so we can safely call GetBridgeFoundation()) */
 		if ((direction == DIAGDIR_NW) || (direction == DIAGDIR_NE)) {
-			CheckBridgeSlopeSouth(axis, &tileh_old, &z_old);
-			res = CheckBridgeSlopeSouth(axis, &tileh_new, &z_new);
+			CheckBridgeSlope(BRIDGE_PIECE_SOUTH, axis, &tileh_old, &z_old);
+			res = CheckBridgeSlope(BRIDGE_PIECE_SOUTH, axis, &tileh_new, &z_new);
 		} else {
-			CheckBridgeSlopeNorth(axis, &tileh_old, &z_old);
-			res = CheckBridgeSlopeNorth(axis, &tileh_new, &z_new);
+			CheckBridgeSlope(BRIDGE_PIECE_NORTH, axis, &tileh_old, &z_old);
+			res = CheckBridgeSlope(BRIDGE_PIECE_NORTH, axis, &tileh_new, &z_new);
 		}
 
 		/* Surface slope is valid and remains unchanged? */

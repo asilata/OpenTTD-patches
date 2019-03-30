@@ -28,6 +28,9 @@
 #include "core/pool_type.hpp"
 #include "game/game.hpp"
 #include "linkgraph/linkgraphschedule.h"
+#include "station_kdtree.h"
+#include "town_kdtree.h"
+#include "viewport_kdtree.h"
 #include "tracerestrict.h"
 #include "programmable_signals.h"
 #include "viewport_func.h"
@@ -49,6 +52,7 @@ void InitializeRailGui();
 void InitializeRoadGui();
 void InitializeAirportGui();
 void InitializeDockGui();
+void InitializeGraphGui();
 void InitializeObjectGui();
 void InitializeIndustries();
 void InitializeObjects();
@@ -90,6 +94,10 @@ void InitializeGame(uint size_x, uint size_y, bool reset_date, bool reset_settin
 	ClearCargoPacketDeferredPayments();
 	PoolBase::Clean(PT_NORMAL);
 
+	RebuildStationKdtree();
+	RebuildTownKdtree();
+	RebuildViewportKdtree();
+
 	FreeSignalPrograms();
 	FreeSignalDependencies();
 
@@ -108,6 +116,7 @@ void InitializeGame(uint size_x, uint size_y, bool reset_date, bool reset_settin
 	InitializeRoadGui();
 	InitializeAirportGui();
 	InitializeDockGui();
+	InitializeGraphGui();
 	InitializeObjectGui();
 	InitializeAIGui();
 	InitializeTrees();
@@ -123,12 +132,13 @@ void InitializeGame(uint size_x, uint size_y, bool reset_date, bool reset_settin
 	InitializeCheats();
 
 	InitTextEffects();
-#ifdef ENABLE_NETWORK
 	NetworkInitChatMessage();
-#endif /* ENABLE_NETWORK */
 	InitializeAnimatedTiles();
 
 	InitializeEconomy();
+
+	InvalidateVehicleTickCaches();
+	ClearVehicleTickCaches();
 
 	ResetObjectToPlace();
 	ResetRailPlacementSnapping();

@@ -67,17 +67,31 @@ if [ -d "$ROOT_DIR/.git" ]; then
 		MODIFIED="2"
 	fi
 	HASH=`LC_ALL=C git rev-parse --verify HEAD 2>/dev/null`
-	SHORTHASH=`echo ${HASH} | cut -c1-8`
+	SHORTHASH=`echo ${HASH} | cut -c1-10`
 	ISODATE=`LC_ALL=C git show -s --pretty='format:%ci' HEAD | "$AWK" '{ gsub("-", "", $1); print $1 }'`
 	BRANCH="`git symbolic-ref -q HEAD 2>/dev/null | sed 's@.*/@@'`"
 	TAG="`git describe --tags --abbrev=7 2>/dev/null`"
 
+	if [ "$MODIFIED" -eq "0" ]; then
+		hashprefix="-g"
+	elif [ "$MODIFIED" -eq "2" ]; then
+		hashprefix="-m"
+	else
+		hashprefix="-u"
+	fi
+
 	if [ -n "$TAG" ]; then
 		VERSION="${TAG}"
-	elif [ "${BRANCH}" = "master" ]; then
-		VERSION="${ISODATE}-g${SHORTHASH}"
+		ISTAG="1"
+		if [ -n "`echo \"${TAG}\" | grep \"^[0-9.]*$\"`" ]; then
+			ISSTABLETAG="1"
+		else
+			ISSTABLETAG="0"
+		fi
 	else
-		VERSION="${ISODATE}-${BRANCH}-g${SHORTHASH}"
+		VERSION="${ISODATE}-${BRANCH}${hashprefix}${SHORTHASH}"
+		ISTAG="0"
+		ISSTABLETAG="0"
 	fi
 elif [ -f "$ROOT_DIR/.ottdrev-vc" ]; then
 	VERSION_DATA="`cat "$ROOT_DIR/.ottdrev-vc" | sed -n -e '1 p;'`"
@@ -86,6 +100,14 @@ elif [ -f "$ROOT_DIR/.ottdrev-vc" ]; then
 	ISODATE="`echo "$VERSION_DATA" | cut -f 2 -d'	'`"
 	MODIFIED="`echo "$VERSION_DATA" | cut -f 3 -d'	'`"
 	HASH="`echo "$VERSION_DATA" | cut -f 4 -d'	'`"
+	ISTAG="`echo "$VERSION_DATA" | cut -f 5 -d'	'`"
+	ISSTABLETAG="`echo "$VERSION_DATA" | cut -f 6 -d'	'`"
+	if [ -z "$ISTAG" ]; then
+		ISTAG="0"
+	fi
+	if [ -z "$ISSTABLETAG" ]; then
+		ISSTABLETAG="0"
+	fi
 	if [ "$MODIFIED" = "2" ]; then
 		VERSION="`echo "$VERSION" | sed -e 's/M$//'`"
 	fi
@@ -111,10 +133,12 @@ else
 	ISODATE=""
 	TAG=""
 	VERSION=""
+	ISTAG="0"
+	ISSTABLETAG="0"
 fi
 
 if [ "$MODIFIED" -eq "2" ]; then
 	VERSION="${VERSION}M"
 fi
 
-echo "$VERSION	$ISODATE	$MODIFIED	$HASH"
+echo "$VERSION	$ISODATE	$MODIFIED	$HASH	$ISTAG	$ISSTABLETAG"

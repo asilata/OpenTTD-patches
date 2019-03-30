@@ -73,7 +73,7 @@ void LinkGraphSchedule::SpawnNext()
 		uint64 cost = lg->CalculateCostEstimate();
 		used_budget += cost;
 		if (LinkGraphJob::CanAllocateItem()) {
-			uint duration_multiplier = CeilDivT<uint64_t>(scaling * cost, total_cost);
+			uint duration_multiplier = cost < 4000 ? 1 : CeilDivT<uint64_t>(scaling * cost, total_cost);
 			std::unique_ptr<LinkGraphJob> job(new LinkGraphJob(*lg, duration_multiplier));
 			jobs_to_execute.emplace_back(job.get(), cost);
 			if (this->running.empty() || job->JoinDateTicks() >= this->running.back()->JoinDateTicks()) {
@@ -108,7 +108,7 @@ void LinkGraphSchedule::SpawnNext()
 bool LinkGraphSchedule::IsJoinWithUnfinishedJobDue() const
 {
 	for (JobList::const_iterator it = this->running.begin(); it != this->running.end(); ++it) {
-		if (!((*it)->IsFinished(1))) {
+		if (!((*it)->IsFinished(2))) {
 			/* job is not due to be joined yet */
 			return false;
 		}
@@ -280,14 +280,16 @@ void LinkGraphJobGroup::JoinThread() {
 	const uint thread_budget = 200000;
 
 	std::sort(jobs.begin(), jobs.end(), [](const JobInfo &a, const JobInfo &b) {
-		return a.cost_estimate < b.cost_estimate;
+		return std::make_pair(a.job->JoinDateTicks(), a.cost_estimate) < std::make_pair(b.job->JoinDateTicks(), b.cost_estimate);
 	});
 
 	std::vector<LinkGraphJob *> bucket;
 	uint bucket_cost = 0;
+	DateTicks bucket_join_date = 0;
 	auto flush_bucket = [&]() {
 		if (!bucket_cost) return;
-		DEBUG(linkgraph, 2, "LinkGraphJobGroup::ExecuteJobSet: Creating Job Group: jobs: " PRINTF_SIZE ", cost: %u", bucket.size(), bucket_cost);
+		DEBUG(linkgraph, 2, "LinkGraphJobGroup::ExecuteJobSet: Creating Job Group: jobs: " PRINTF_SIZE ", cost: %u, join after: %d",
+				bucket.size(), bucket_cost, bucket_join_date - ((_date * DAY_TICKS) + _date_fract));
 		auto group = std::make_shared<LinkGraphJobGroup>(constructor_token(), std::move(bucket));
 		group->SpawnThread();
 		bucket_cost = 0;
@@ -295,7 +297,8 @@ void LinkGraphJobGroup::JoinThread() {
 	};
 
 	for (JobInfo &it : jobs) {
-		if (bucket_cost && (bucket_cost + it.cost_estimate > thread_budget)) flush_bucket();
+		if (bucket_cost && (bucket_join_date != it.job->JoinDateTicks() || (bucket_cost + it.cost_estimate > thread_budget))) flush_bucket();
+		bucket_join_date = it.job->JoinDateTicks();
 		bucket.push_back(it.job);
 		bucket_cost += it.cost_estimate;
 	}
@@ -319,10 +322,10 @@ void StateGameLoop_LinkGraphPauseControl()
 		}
 	} else if (_pause_mode == PM_UNPAUSED && _tick_skip_counter == 0) {
 		if (!_settings_game.linkgraph.recalc_not_scaled_by_daylength || _settings_game.economy.day_length_factor == 1) {
-			if (_date_fract != LinkGraphSchedule::SPAWN_JOIN_TICK - 1) return;
+			if (_date_fract != LinkGraphSchedule::SPAWN_JOIN_TICK - 2) return;
 			if (_date % _settings_game.linkgraph.recalc_interval != _settings_game.linkgraph.recalc_interval / 2) return;
 		} else {
-			int date_ticks = ((_date * DAY_TICKS) + _date_fract - (LinkGraphSchedule::SPAWN_JOIN_TICK - 1));
+			int date_ticks = ((_date * DAY_TICKS) + _date_fract - (LinkGraphSchedule::SPAWN_JOIN_TICK - 2));
 			int interval = max<int>(2, (_settings_game.linkgraph.recalc_interval * DAY_TICKS / _settings_game.economy.day_length_factor));
 			if (date_ticks % interval != interval / 2) return;
 		}
@@ -331,6 +334,17 @@ void StateGameLoop_LinkGraphPauseControl()
 		if (LinkGraphSchedule::instance.IsJoinWithUnfinishedJobDue()) {
 			DoCommandP(0, PM_PAUSED_LINK_GRAPH, 1, CMD_PAUSE);
 		}
+	}
+}
+
+/**
+ * Pause the game on load if we would do a join with the next link graph job, but it is still running, and it would not
+ * be caught by a call to StateGameLoop_LinkGraphPauseControl().
+ */
+void AfterLoad_LinkGraphPauseControl()
+{
+	if (LinkGraphSchedule::instance.IsJoinWithUnfinishedJobDue()) {
+		_pause_mode |= PM_PAUSED_LINK_GRAPH;
 	}
 }
 

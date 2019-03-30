@@ -270,7 +270,7 @@ struct SchdispatchWindow : Window {
 	 * @param right Right side of the box to draw in.
 	 * @param y     Top of the box to draw in.
 	 */
-	void DrawScheduledTime(const int time, int left, int right, int y, TextColour colour) const
+	void DrawScheduledTime(const DateTicksScaled time, int left, int right, int y, TextColour colour) const
 	{
 		bool rtl = _current_text_dir == TD_RTL;
 		uint diff_x, diff_y;
@@ -286,7 +286,7 @@ struct SchdispatchWindow : Window {
 		DrawString(text_left, text_right, y + 2, STR_JUST_DATE_WALLCLOCK_TINY, colour);
 	}
 
-	virtual void OnTick() override
+	virtual void OnGameTick() override
 	{
 		const Vehicle *v = this->vehicle;
 		if (HasBit(v->vehicle_flags, VF_SCHEDULED_DISPATCH) && v->orders.list != NULL) {
@@ -352,8 +352,10 @@ struct SchdispatchWindow : Window {
 					y += FONT_HEIGHT_NORMAL;
 
 					const int required_vehicle = CalculateMaxRequiredVehicle(v->orders.list->GetTimetableTotalDuration(), v->orders.list->GetScheduledDispatchDuration(), v->orders.list->GetScheduledDispatch());
-					SetDParam(0, required_vehicle);
-					DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_SCHDISPATCH_SUMMARY_L1);
+					if (required_vehicle > 0) {
+						SetDParam(0, required_vehicle);
+						DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y, STR_SCHDISPATCH_SUMMARY_L1);
+					}
 					y += FONT_HEIGHT_NORMAL;
 
 					SetTimetableParams(0, v->orders.list->GetScheduledDispatchDuration());
@@ -481,10 +483,10 @@ struct SchdispatchWindow : Window {
 				if (val >= 0 && end && *end == 0) {
 					uint minutes = (val % 100) % 60;
 					uint hours = (val / 100) % 24;
-					val = MINUTES_DATE(MINUTES_DAY(CURRENT_MINUTE), hours, minutes);
-					val -= _settings_client.gui.clock_offset;
-					val *= _settings_client.gui.ticks_per_minute;
-					ScheduleAddIntl(v->index, val);
+					DateTicksScaled slot = MINUTES_DATE(MINUTES_DAY(CURRENT_MINUTE), hours, minutes);
+					slot -= _settings_client.gui.clock_offset;
+					slot *= _settings_client.gui.ticks_per_minute;
+					ScheduleAddIntl(v->index, slot);
 				}
 				break;
 			}
@@ -496,10 +498,10 @@ struct SchdispatchWindow : Window {
 				if (val >= 0 && end && *end == 0) {
 					uint minutes = (val % 100) % 60;
 					uint hours = (val / 100) % 24;
-					val = MINUTES_DATE(MINUTES_DAY(CURRENT_MINUTE), hours, minutes);
-					val -= _settings_client.gui.clock_offset;
-					val *= _settings_client.gui.ticks_per_minute;
-					SetScheduleStartDateIntl(v->index, val);
+					DateTicksScaled start = MINUTES_DATE(MINUTES_DAY(CURRENT_MINUTE), hours, minutes);
+					start -= _settings_client.gui.clock_offset;
+					start *= _settings_client.gui.ticks_per_minute;
+					SetScheduleStartDateIntl(v->index, start);
 				}
 				break;
 			}

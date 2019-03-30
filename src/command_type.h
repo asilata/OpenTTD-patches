@@ -30,6 +30,7 @@ class CommandCost {
 	bool success;     ///< Whether the comment went fine up to this moment
 	const GRFFile *textref_stack_grffile; ///< NewGRF providing the #TextRefStack content.
 	uint textref_stack_size;   ///< Number of uint32 values to put on the #TextRefStack for the error message.
+	StringID extra_message = INVALID_STRING_ID;    ///< Additional warning message for when success is unset
 
 	static uint32 textref_stack[16];
 
@@ -43,6 +44,16 @@ public:
 	 * Creates a command return value the is failed with the given message
 	 */
 	explicit CommandCost(StringID msg) : expense_type(INVALID_EXPENSES), cost(0), message(msg), success(false), textref_stack_grffile(NULL), textref_stack_size(0) {}
+
+	/**
+	 * Creates a command return value the is failed with the given message
+	 */
+	static CommandCost DualErrorMessage(StringID msg, StringID extra_msg)
+	{
+		CommandCost cc(msg);
+		cc.extra_message = extra_msg;
+		return cc;
+	}
 
 	/**
 	 * Creates a command cost with given expense type and start cost of 0
@@ -100,11 +111,12 @@ public:
 	 * Makes this #CommandCost behave like an error command.
 	 * @param message The error message.
 	 */
-	void MakeError(StringID message)
+	void MakeError(StringID message, StringID extra_message = INVALID_STRING_ID)
 	{
 		assert(message != INVALID_STRING_ID);
 		this->success = false;
 		this->message = message;
+		this->extra_message = extra_message;
 	}
 
 	void UseTextRefStack(const GRFFile *grffile, uint num_registers);
@@ -144,6 +156,16 @@ public:
 	{
 		if (this->success) return INVALID_STRING_ID;
 		return this->message;
+	}
+
+	/**
+	 * Returns the extra error message of a command
+	 * @return the extra error message, if succeeded #INVALID_STRING_ID
+	 */
+	StringID GetExtraErrorMessage() const
+	{
+		if (this->success) return INVALID_STRING_ID;
+		return this->extra_message;
 	}
 
 	/**
@@ -203,6 +225,7 @@ enum Commands {
 	CMD_REMOVE_SIGNALS,               ///< remove a signal
 	CMD_TERRAFORM_LAND,               ///< terraform a tile
 	CMD_BUILD_OBJECT,                 ///< build an object
+	CMD_PURCHASE_LAND_AREA,           ///< purchase an area of landscape
 	CMD_BUILD_HOUSE,                  ///< build a house
 	CMD_BUILD_TUNNEL,                 ///< build a tunnel
 
@@ -230,7 +253,6 @@ enum Commands {
 	CMD_PLANT_TREE,                   ///< plant a tree
 
 	CMD_BUILD_VEHICLE,                ///< build a vehicle
-	CMD_BUILD_VEHICLE_NT,             ///< build a vehicle (no test)
 	CMD_SELL_VEHICLE,                 ///< sell a vehicle
 	CMD_REFIT_VEHICLE,                ///< refit the cargo space of a vehicle
 	CMD_SEND_VEHICLE_TO_DEPOT,        ///< send a vehicle to a depot
@@ -362,6 +384,7 @@ enum Commands {
 	CMD_ADD_SHARED_VEHICLE_GROUP,     ///< add all other shared vehicles to a group which are missing
 	CMD_REMOVE_ALL_VEHICLES_GROUP,    ///< remove all vehicles from a group
 	CMD_SET_GROUP_REPLACE_PROTECTION, ///< set the autoreplace-protection for a group
+	CMD_SET_GROUP_LIVERY,             ///< set the livery for a group
 
 	CMD_MOVE_ORDER,                   ///< move an order
 	CMD_CHANGE_TIMETABLE,             ///< change the timetable for a vehicle
@@ -467,6 +490,8 @@ enum CommandFlags {
 	CMD_CLIENT_ID = 0x080, ///< set p2 with the ClientID of the sending client.
 	CMD_DEITY     = 0x100, ///< the command may be executed by COMPANY_DEITY
 	CMD_STR_CTRL  = 0x200, ///< the command's string may contain control strings
+	CMD_NO_EST    = 0x400, ///< the command is never estimated.
+	CMD_PROCEX    = 0x800, ///< the command proc function has extended parameters
 };
 DECLARE_ENUM_AS_BIT_SET(CommandFlags)
 
@@ -512,6 +537,7 @@ enum CommandPauseLevel {
  * @return The CommandCost of the command, which can be succeeded or failed.
  */
 typedef CommandCost CommandProc(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text);
+typedef CommandCost CommandProcEx(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text, uint32 binary_length);
 
 /**
  * Define a command with the flags which belongs to it.
@@ -520,10 +546,26 @@ typedef CommandCost CommandProc(TileIndex tile, DoCommandFlag flags, uint32 p1, 
  * the #CMD_AUTO, #CMD_OFFLINE and #CMD_SERVER values.
  */
 struct Command {
-	CommandProc *proc;  ///< The procedure to actually executing
+	union {
+		CommandProc *proc;      ///< The procedure to actually execute
+		CommandProcEx *procex;  ///< The procedure to actually execute, extended parameters
+	};
 	const char *name;   ///< A human readable name for the procedure
 	CommandFlags flags; ///< The (command) flags to that apply to this command
 	CommandType type;   ///< The type of command.
+
+	Command(CommandProc *proc, const char *name, CommandFlags flags, CommandType type)
+			: proc(proc), name(name), flags(flags & ~CMD_PROCEX), type(type) {}
+	Command(CommandProcEx *procex, const char *name, CommandFlags flags, CommandType type)
+			: procex(procex), name(name), flags(flags | CMD_PROCEX), type(type) {}
+
+	inline CommandCost Execute(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text, uint32 binary_length) const {
+		if (this->flags & CMD_PROCEX) {
+			return this->procex(tile, flags, p1, p2, text, binary_length);
+		} else {
+			return this->proc(tile, flags, p1, p2, text);
+		}
+	}
 };
 
 /**

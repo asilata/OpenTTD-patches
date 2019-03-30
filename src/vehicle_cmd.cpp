@@ -81,12 +81,13 @@ static CommandCost GetRefitCost(const Vehicle *v, EngineID engine_type, CargoID 
  * @param flags for command
  * @param p1 various bitstuffed data
  *  bits  0-15: vehicle type being built.
- *  bits 16-31: vehicle type specific bits passed on to the vehicle build functions.
+ *  bits 16-23: vehicle type specific bits passed on to the vehicle build functions.
+ *  bits 24-31: refit cargo type.
  * @param p2 User
- * @param text used for combined build and refit command
+ * @param text unused
  * @return the cost of this operation or an error
  */
-CommandCost CmdBuildVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text)
+CommandCost CmdBuildVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text, uint32 binary_length)
 {
 	/* Elementary check for valid location. */
 	if (!IsDepotTile(tile)) return CMD_ERROR;
@@ -103,11 +104,18 @@ CommandCost CmdBuildVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 	EngineID eid = GB(p1, 0, 16);
 	if (!IsEngineBuildable(eid, type, _current_company)) return_cmd_error(STR_ERROR_RAIL_VEHICLE_NOT_AVAILABLE + type);
 
+	/* Validate the cargo type. */
+	CargoID cargo = GB(p1, 24, 8);
+	if (cargo >= NUM_CARGO && cargo != CT_INVALID) return CMD_ERROR;
+
 	const Engine *e = Engine::Get(eid);
 	CommandCost value(EXPENSES_NEW_VEHICLES, e->GetCost());
 
 	/* Engines without valid cargo should not be available */
-	if (e->GetDefaultCargoType() == CT_INVALID) return CMD_ERROR;
+	CargoID default_cargo = e->GetDefaultCargoType();
+	if (default_cargo == CT_INVALID) return CMD_ERROR;
+
+	bool refitting = cargo != CT_INVALID && cargo != default_cargo;
 
 	/* Check whether the number of vehicles we need to build can be built according to pool space. */
 	uint num_vehicles;
@@ -126,64 +134,56 @@ CommandCost CmdBuildVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 	UnitID unit_num = (flags & DC_AUTOREPLACE || (type == VEH_TRAIN && e->u.rail.railveh_type == RAILVEH_WAGON)) ? 0 : GetFreeUnitNumber(type);
 	if (unit_num == UINT16_MAX) return_cmd_error(STR_ERROR_TOO_MANY_VEHICLES_IN_GAME);
 
-	Vehicle *v;
+	/* If we are refitting we need to temporarily purchase the vehicle to be able to
+	 * test it. */
+	DoCommandFlag subflags = flags;
+	if (refitting) subflags |= DC_EXEC;
+
+	Vehicle *v = NULL;
 	switch (type) {
-		case VEH_TRAIN:    value.AddCost(CmdBuildRailVehicle(tile, flags, e, GB(p1, 16, 16), &v)); break;
-		case VEH_ROAD:     value.AddCost(CmdBuildRoadVehicle(tile, flags, e, GB(p1, 16, 16), &v)); break;
-		case VEH_SHIP:     value.AddCost(CmdBuildShip       (tile, flags, e, GB(p1, 16, 16), &v)); break;
-		case VEH_AIRCRAFT: value.AddCost(CmdBuildAircraft   (tile, flags, e, GB(p1, 16, 16), &v)); break;
+		case VEH_TRAIN:    value.AddCost(CmdBuildRailVehicle(tile, subflags, e, GB(p1, 24, 8), &v)); break;
+		case VEH_ROAD:     value.AddCost(CmdBuildRoadVehicle(tile, subflags, e, GB(p1, 24, 8), &v)); break;
+		case VEH_SHIP:     value.AddCost(CmdBuildShip       (tile, subflags, e, GB(p1, 24, 8), &v)); break;
+		case VEH_AIRCRAFT: value.AddCost(CmdBuildAircraft   (tile, subflags, e, GB(p1, 24, 8), &v)); break;
 		default: NOT_REACHED(); // Safe due to IsDepotTile()
 	}
 
-	if (value.Succeeded() && flags & DC_EXEC) {
-		v->unitnumber = unit_num;
-		v->value      = value.GetCost();
-
-		InvalidateWindowData(WC_VEHICLE_DEPOT, v->tile);
-		InvalidateWindowClassesData(GetWindowClassForVehicleType(type), 0);
-		SetWindowDirty(WC_COMPANY, _current_company);
-		if (IsLocalCompany()) {
-			InvalidateAutoreplaceWindow(v->engine_type, v->group_id); // updates the auto replace window (must be called before incrementing num_engines)
+	if (value.Succeeded()) {
+		if (refitting || (flags & DC_EXEC)) {
+			v->unitnumber = unit_num;
+			v->value      = value.GetCost();
 		}
 
-		GroupStatistics::CountEngine(v, 1);
-		GroupStatistics::UpdateAutoreplace(_current_company);
-
-		if (v->IsPrimaryVehicle()) {
-			GroupStatistics::CountVehicle(v, 1);
-			OrderBackup::Restore(v, p2);
+		if (refitting) {
+			value.AddCost(CmdRefitVehicle(tile, flags, v->index, cargo, NULL));
+		} else {
+			/* Fill in non-refitted capacities */
+			_returned_refit_capacity = e->GetDisplayDefaultCapacity(&_returned_mail_refit_capacity);
 		}
-	}
 
-	if (value.Succeeded() && text && text[0] == 'R') {
-		CargoID cargo = text[1];
-		if (cargo >= NUM_CARGO) return CMD_ERROR;
-		CargoID default_cargo = e->GetDefaultCargoType();
-		if (default_cargo != cargo) {
-			if (flags & DC_EXEC) {
-				value.AddCost(CmdRefitVehicle(tile, flags, v->index, cargo, NULL));
-			} else {
-				bool auto_refit_allowed = false;
-				value.AddCost(GetRefitCost(NULL, eid, cargo, 0, &auto_refit_allowed));
-				if (type == VEH_TRAIN || type == VEH_ROAD) {
-					std::vector<EngineID> engine_ids;
-					GetArticulatedPartsEngineIDs(eid, false, engine_ids);
-					for (size_t i = 0; i < engine_ids.size(); i++) {
-						value.AddCost(GetRefitCost(NULL, engine_ids[i], cargo, 0, &auto_refit_allowed));
-					}
-				}
-				if (type == VEH_TRAIN && e->u.rail.railveh_type == RAILVEH_MULTIHEAD) {
-					value.AddCost(GetRefitCost(NULL, eid, cargo, 0, &auto_refit_allowed));
-				}
+		if (flags & DC_EXEC) {
+			InvalidateWindowData(WC_VEHICLE_DEPOT, v->tile);
+			InvalidateWindowClassesData(GetWindowClassForVehicleType(type), 0);
+			SetWindowDirty(WC_COMPANY, _current_company);
+			if (IsLocalCompany()) {
+				InvalidateAutoreplaceWindow(v->engine_type, v->group_id); // updates the auto replace window (must be called before incrementing num_engines)
 			}
 		}
-		/* Since we can't estimate the cost of build and refitting a vehicle accurately we must
-		 * check whether the company has enough money manually. */
-		if (!CheckCompanyHasMoney(value)) {
-			if (flags & DC_EXEC) {
-				/* The vehicle has already been bought, so now it must be sold again. */
-				DoCommand(tile, v->index, 0, flags, GetCmdSellVeh(type));
+
+		if (refitting || (flags & DC_EXEC)) {
+			GroupStatistics::CountEngine(v, 1);
+			GroupStatistics::UpdateAutoreplace(_current_company);
+
+			if (v->IsPrimaryVehicle()) {
+				GroupStatistics::CountVehicle(v, 1);
+				OrderBackup::Restore(v, p2);
 			}
+		}
+
+
+		/* If we are not in DC_EXEC undo everything */
+		if (refitting && (flags & DC_EXEC) == 0) {
+			DoCommand(0, v->index, 0, DC_EXEC, GetCmdSellVeh(v));
 		}
 	}
 
@@ -251,7 +251,7 @@ CommandCost CmdSellVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
  * @param engine_type Which engine to refit
  * @param new_cid Cargo type we are refitting to.
  * @param new_subtype New cargo subtype.
- * @param [out] auto_refit_allowed The refit is allowed as an auto-refit.
+ * @param[out] auto_refit_allowed The refit is allowed as an auto-refit.
  * @return Price for refitting
  */
 static int GetRefitCostFactor(const Vehicle *v, EngineID engine_type, CargoID new_cid, byte new_subtype, bool *auto_refit_allowed)
@@ -283,7 +283,7 @@ static int GetRefitCostFactor(const Vehicle *v, EngineID engine_type, CargoID ne
  * @param engine_type Which engine to refit
  * @param new_cid Cargo type we are refitting to.
  * @param new_subtype New cargo subtype.
- * @param [out] auto_refit_allowed The refit is allowed as an auto-refit.
+ * @param[out] auto_refit_allowed The refit is allowed as an auto-refit.
  * @return Price for refitting
  */
 static CommandCost GetRefitCost(const Vehicle *v, EngineID engine_type, CargoID new_cid, byte new_subtype, bool *auto_refit_allowed)
@@ -357,8 +357,7 @@ static CommandCost RefitVehicle(Vehicle *v, bool only_this, uint8 num_vehicles, 
 		v = v->First();
 	}
 
-	static SmallVector<RefitResult, 16> refit_result;
-	refit_result.Clear();
+	std::vector<RefitResult> refit_result;
 
 	v->InvalidateNewGRFCacheOfChain();
 	byte actual_subtype = new_subtype;
@@ -366,7 +365,7 @@ static CommandCost RefitVehicle(Vehicle *v, bool only_this, uint8 num_vehicles, 
 		/* Reset actual_subtype for every new vehicle */
 		if (!v->IsArticulatedPart()) actual_subtype = new_subtype;
 
-		if (v->type == VEH_TRAIN && !vehicles_to_refit.Contains(v->index) && !only_this) continue;
+		if (v->type == VEH_TRAIN && std::find(vehicles_to_refit.begin(), vehicles_to_refit.end(), v->index) == vehicles_to_refit.end() && !only_this) continue;
 
 		const Engine *e = v->GetEngine();
 		if (!e->CanCarryCargo()) continue;
@@ -428,32 +427,28 @@ static CommandCost RefitVehicle(Vehicle *v, bool only_this, uint8 num_vehicles, 
 		 *  - We have to call the refit cost callback with the pre-refit configuration of the chain because we want refit and
 		 *    autorefit to behave the same, and we need its result for auto_refit_allowed.
 		 */
-		RefitResult *result = refit_result.Append();
-		result->v = v;
-		result->capacity = amount;
-		result->mail_capacity = mail_capacity;
-		result->subtype = actual_subtype;
+		refit_result.push_back({v, amount, mail_capacity, actual_subtype});
 	}
 
 	if (flags & DC_EXEC) {
 		/* Store the result */
-		for (RefitResult *result = refit_result.Begin(); result != refit_result.End(); result++) {
-			Vehicle *u = result->v;
-			u->refit_cap = (u->cargo_type == new_cid) ? min(result->capacity, u->refit_cap) : 0;
+		for (RefitResult &result : refit_result) {
+			Vehicle *u = result.v;
+			u->refit_cap = (u->cargo_type == new_cid) ? min(result.capacity, u->refit_cap) : 0;
 			if (u->cargo.TotalCount() > u->refit_cap) u->cargo.Truncate(u->cargo.TotalCount() - u->refit_cap);
 			u->cargo_type = new_cid;
-			u->cargo_cap = result->capacity;
-			u->cargo_subtype = result->subtype;
+			u->cargo_cap = result.capacity;
+			u->cargo_subtype = result.subtype;
 			if (u->type == VEH_AIRCRAFT) {
 				Vehicle *w = u->Next();
-				w->refit_cap = min(w->refit_cap, result->mail_capacity);
-				w->cargo_cap = result->mail_capacity;
+				w->refit_cap = min(w->refit_cap, result.mail_capacity);
+				w->cargo_cap = result.mail_capacity;
 				if (w->cargo.TotalCount() > w->refit_cap) w->cargo.Truncate(w->cargo.TotalCount() - w->refit_cap);
 			}
 		}
 	}
 
-	refit_result.Clear();
+	refit_result.clear();
 	_returned_refit_capacity = total_capacity;
 	_returned_mail_refit_capacity = total_mail_capacity;
 	return cost;
@@ -465,13 +460,13 @@ static CommandCost RefitVehicle(Vehicle *v, bool only_this, uint8 num_vehicles, 
  * @param flags type of operation
  * @param p1 vehicle ID to refit
  * @param p2 various bitstuffed elements
- * - p2 = (bit 0-4)   - New cargo type to refit to.
- * - p2 = (bit 5)     - Is a virtual train (used by template replacement to allow refitting without stopped-in-depot checks)
- * - p2 = (bit 6)     - Automatic refitting.
- * - p2 = (bit 7)     - Refit only this vehicle. Used only for cloning vehicles.
+ * - p2 = (bit 0-7)   - New cargo type to refit to.
  * - p2 = (bit 8-15)  - New cargo subtype to refit to. 0xFF means to try keeping the same subtype according to GetBestFittingSubType().
  * - p2 = (bit 16-23) - Number of vehicles to refit (not counting articulated parts). Zero means all vehicles.
  *                      Only used if "refit only this vehicle" is false.
+ * - p2 = (bit 24)     - Automatic refitting.
+ * - p2 = (bit 25)     - Refit only this vehicle. Used only for cloning vehicles.
+ * - p2 = (bit 31)     - Is a virtual train (used by template replacement to allow refitting without stopped-in-depot checks)
  * @param text unused
  * @return the cost of this operation or an error
  */
@@ -486,8 +481,8 @@ CommandCost CmdRefitVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 
 	Vehicle *front = v->First();
 
-	bool auto_refit = HasBit(p2, 6);
-	bool is_virtual_train = HasBit(p2, 5);
+	bool auto_refit = HasBit(p2, 24);
+	bool is_virtual_train = HasBit(p2, 31);
 	bool free_wagon = v->type == VEH_TRAIN && Train::From(front)->IsFreeWagon(); // used by autoreplace/renew
 
 	if (is_virtual_train || (v->type == VEH_TRAIN && Train::From(front)->IsVirtual())) {
@@ -516,12 +511,12 @@ CommandCost CmdRefitVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 	if (front->vehstatus & VS_CRASHED) return_cmd_error(STR_ERROR_VEHICLE_IS_DESTROYED);
 
 	/* Check cargo */
-	CargoID new_cid = GB(p2, 0, 5);
+	CargoID new_cid = GB(p2, 0, 8);
 	byte new_subtype = GB(p2, 8, 8);
 	if (new_cid >= NUM_CARGO) return CMD_ERROR;
 
 	/* For ships and aircraft there is always only one. */
-	bool only_this = HasBit(p2, 7) || front->type == VEH_SHIP || front->type == VEH_AIRCRAFT;
+	bool only_this = HasBit(p2, 25) || front->type == VEH_SHIP || front->type == VEH_AIRCRAFT;
 	uint8 num_vehicles = GB(p2, 16, 8);
 
 	CommandCost cost = RefitVehicle(v, only_this, num_vehicles, new_cid, new_subtype, flags, auto_refit);
@@ -603,7 +598,8 @@ CommandCost CmdStartStopVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 		case VEH_AIRCRAFT: {
 			Aircraft *a = Aircraft::From(v);
 			/* cannot stop airplane when in flight, or when taking off / landing */
-			if (!(v->vehstatus & VS_CRASHED) && a->state >= STARTTAKEOFF && a->state < TERM7) return_cmd_error(STR_ERROR_AIRCRAFT_IS_IN_FLIGHT);
+			if (a->state >= STARTTAKEOFF && a->state < TERM7) return_cmd_error(STR_ERROR_AIRCRAFT_IS_IN_FLIGHT);
+			if (HasBit(a->flags, VAF_HELI_DIRECT_DESCENT)) return_cmd_error(STR_ERROR_AIRCRAFT_IS_IN_FLIGHT);
 			break;
 		}
 
@@ -652,6 +648,7 @@ CommandCost CmdStartStopVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 		SetWindowWidgetDirty(WC_VEHICLE_VIEW, v->index, WID_VV_START_STOP);
 		SetWindowDirty(WC_VEHICLE_DEPOT, v->tile);
 		SetWindowClassesDirty(GetWindowClassForVehicleType(v->type));
+		InvalidateWindowData(WC_VEHICLE_VIEW, v->index);
 	}
 	return CommandCost();
 }
@@ -684,7 +681,7 @@ CommandCost CmdMassStartStopVehicle(TileIndex tile, DoCommandFlag flags, uint32 
 		BuildDepotVehicleList(vli.vtype, tile, &list, NULL);
 	}
 
-	for (uint i = 0; i < list.Length(); i++) {
+	for (uint i = 0; i < list.size(); i++) {
 		const Vehicle *v = list[i];
 
 		if (!!(v->vehstatus & VS_STOPPED) != do_start) continue;
@@ -723,7 +720,7 @@ CommandCost CmdDepotSellAllVehicles(TileIndex tile, DoCommandFlag flags, uint32 
 
 	CommandCost last_error = CMD_ERROR;
 	bool had_success = false;
-	for (uint i = 0; i < list.Length(); i++) {
+	for (uint i = 0; i < list.size(); i++) {
 		CommandCost ret = DoCommand(tile, list[i]->index | (1 << 20), 0, flags, sell_command);
 		if (ret.Succeeded()) {
 			cost.AddCost(ret);
@@ -757,7 +754,7 @@ CommandCost CmdDepotMassAutoReplace(TileIndex tile, DoCommandFlag flags, uint32 
 	/* Get the list of vehicles in the depot */
 	BuildDepotVehicleList(vehicle_type, tile, &list, &list, true);
 
-	for (uint i = 0; i < list.Length(); i++) {
+	for (uint i = 0; i < list.size(); i++) {
 		const Vehicle *v = list[i];
 
 		/* Ensure that the vehicle completely in the depot */
@@ -834,34 +831,6 @@ static void CloneVehicleName(const Vehicle *src, Vehicle *dst)
 	}
 
 	/* All done. If we didn't find a name, it'll just use its default. */
-}
-
-inline void SetupTemplateVehicleFromVirtual(TemplateVehicle *tmp, TemplateVehicle *prev, Train *virt)
-{
-	if (prev) {
-		prev->SetNext(tmp);
-		tmp->SetPrev(prev);
-		tmp->SetFirst(prev->First());
-	}
-	tmp->railtype = virt->railtype;
-	tmp->owner = virt->owner;
-	tmp->value = virt->value;
-
-	// set the subtype but also clear the virtual flag while doing it
-	tmp->subtype = virt->subtype & ~(1 << GVSF_VIRTUAL);
-	// set the cargo type and capacity
-	tmp->cargo_type = virt->cargo_type;
-	tmp->cargo_subtype = virt->cargo_subtype;
-	tmp->cargo_cap = virt->cargo_cap;
-
-	const GroundVehicleCache *gcache = virt->GetGroundVehicleCache();
-	tmp->max_speed = virt->GetDisplayMaxSpeed();
-	tmp->power = gcache->cached_power;
-	tmp->weight = gcache->cached_weight;
-	tmp->max_te = gcache->cached_max_te / 1000;
-
-	virt->GetImage(DIR_W, EIT_IN_DEPOT, &tmp->sprite_seq);
-	tmp->image_dimensions.SetFromTrain(virt);
 }
 
 /**
@@ -1399,7 +1368,7 @@ CommandCost CmdCloneVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 		DoCommandFlag build_flags = flags;
 		if ((flags & DC_EXEC) && !v->IsPrimaryVehicle()) build_flags |= DC_AUTOREPLACE;
 
-		CommandCost cost = DoCommand(tile, v->engine_type | (1 << 16), 0, build_flags, GetCmdBuildVeh(v));
+		CommandCost cost = DoCommand(tile, v->engine_type | (1 << 16) | (CT_INVALID << 24), 0, build_flags, GetCmdBuildVeh(v));
 
 		if (cost.Failed()) {
 			/* Can't build a part, then sell the stuff we already made; clear up the mess */
@@ -1467,7 +1436,7 @@ CommandCost CmdCloneVehicle(TileIndex tile, DoCommandFlag flags, uint32 p1, uint
 				/* Find out what's the best sub type */
 				byte subtype = GetBestFittingSubType(v, w, v->cargo_type);
 				if (w->cargo_type != v->cargo_type || w->cargo_subtype != subtype) {
-					CommandCost cost = DoCommand(0, w->index, v->cargo_type | 1U << 7 | (subtype << 8), flags, GetCmdRefitVeh(v));
+					CommandCost cost = DoCommand(0, w->index, v->cargo_type | 1U << 25 | (subtype << 8), flags, GetCmdRefitVeh(v));
 					if (cost.Succeeded()) total_cost.AddCost(cost);
 				}
 
@@ -1536,7 +1505,7 @@ static CommandCost SendAllVehiclesToDepot(DoCommandFlag flags, DepotCommand depo
 
 	/* Send all the vehicles to a depot */
 	bool had_success = false;
-	for (uint i = 0; i < list.Length(); i++) {
+	for (uint i = 0; i < list.size(); i++) {
 		const Vehicle *v = list[i];
 		CommandCost ret = DoCommand(v->tile, v->index | depot_flags, 0, flags, GetCmdSendToDepot(vli.vtype));
 
