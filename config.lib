@@ -97,6 +97,7 @@ set_default() {
 	with_libbfd="1"
 	with_bfd_extra_debug="1"
 	with_self_gdb_debug="1"
+	with_self_lldb_debug="1"
 
 	save_params_array="
 		build
@@ -176,6 +177,7 @@ set_default() {
 		with_libbfd
 		with_bfd_extra_debug
 		with_self_gdb_debug
+		with_self_lldb_debug
 	CC CXX CFLAGS CXXFLAGS LDFLAGS CFLAGS_BUILD CXXFLAGS_BUILD LDFLAGS_BUILD PKG_CONFIG_PATH PKG_CONFIG_LIBDIR"
 }
 
@@ -478,6 +480,10 @@ detect_params() {
 			--without-self-gdb-debug)     with_self_gdb_debug="0";;
 			--with-self-gdb-debug)        with_self_gdb_debug="1";;
 			--with-self-gdb-debug=*)      with_self_gdb_debug="$optarg";;
+
+			--without-self-lldb-debug)     with_self_lldb_debug="0";;
+			--with-self-lldb-debug)        with_self_lldb_debug="1";;
+			--with-self-lldb-debug=*)      with_self_lldb_debug="$optarg";;
 
 			CC=* | --CC=*)                CC="$optarg";;
 			CXX=* | --CXX=*)              CXX="$optarg";;
@@ -1817,6 +1823,29 @@ EOL
 			log 1 "checking ucontext... found"
 			CFLAGS="$CFLAGS -DWITH_UCONTEXT"
 		fi
+
+		log 2 "executing $cc_host $CFLAGS $CFLAGS_ENV $LDFLAGS $LDFLAGS_ENV $STATIC_FLAGS -o tmp.config.sigaltstack -x c++ - -ldl"
+		"$cc_host" $CFLAGS $CFLAGS_ENV $LDFLAGS $LDFLAGS_ENV $STATIC_FLAGS -o tmp.config.sigaltstack -x c++ - -ldl 2> /dev/null << EOL
+			#include <signal.h>
+			#include <stdlib.h>
+			int main() {
+				stack_t ss;
+				ss.ss_sp = calloc(SIGSTKSZ, 1);
+				ss.ss_size = SIGSTKSZ;
+				ss.ss_flags = 0;
+				sigaltstack(&ss, nullptr);
+				return 0;
+			}
+EOL
+		ret=$?
+		rm -f tmp.config.sigaltstack
+		log 2 "  exit code $ret"
+		if [ $ret -ne 0 ]; then
+			log 1 "checking sigaltstack... no"
+		else
+			log 1 "checking sigaltstack... found"
+			CFLAGS="$CFLAGS -DWITH_SIGALTSTACK"
+		fi
 	fi
 
 	if [ "$os" = "MINGW" ]; then
@@ -1919,6 +1948,72 @@ EOL
 			# Universal builds set this elsewhere
 			CFLAGS="$OSX_SYSROOT $CFLAGS"
 			LDFLAGS="$OSX_LD_SYSROOT $LDFLAGS"
+		fi
+
+		if [ "$with_self_lldb_debug" = "0" ]; then
+			log 1 "using dbg lldb... no"
+			CFLAGS="$CFLAGS -DWITHOUT_DBG_LLDB"
+		else
+			log 1 "using dbg lldb... yes"
+			if [ $enable_debug -lt 1 ]; then
+				if [ -n "`"$cc_host" --version | head -n1 | grep "clang" 2>/dev/null`" ]; then
+					CFLAGS="$CFLAGS -gline-tables-only"
+				else
+					CFLAGS="$CFLAGS -g1"
+				fi
+			fi
+		fi
+
+		log 2 "executing $cc_host $CFLAGS $CFLAGS_ENV $LDFLAGS $LDFLAGS_ENV $STATIC_FLAGS -o tmp.config.ucontext -x c++ - -ldl"
+		"$cc_host" $CFLAGS $CFLAGS_ENV $LDFLAGS $LDFLAGS_ENV $STATIC_FLAGS -o tmp.config.ucontext -x c++ - -ldl 2> /dev/null << EOL
+			#include <sys/ucontext.h>
+			int main() {
+				ucontext_t context;
+#if defined(__x86_64__)
+				void *ptr = (void *) context.uc_mcontext->__ss.__rip;
+#elif defined(__i386)
+				void *ptr = (void *) context.uc_mcontext->__ss.__rip;
+#else
+#error Unknown arch
+#endif
+				return 0;
+			}
+EOL
+		ret=$?
+		rm -f tmp.config.ucontext
+		log 2 "  exit code $ret"
+		if [ $ret -ne 0 ]; then
+			log 1 "checking ucontext... no"
+		else
+			log 1 "checking ucontext... found"
+			CFLAGS="$CFLAGS -DWITH_UCONTEXT"
+		fi
+
+		log 2 "executing $cc_host $CFLAGS $CFLAGS_ENV $LDFLAGS $LDFLAGS_ENV $STATIC_FLAGS -o tmp.config.sigaltstack -x c++ - -ldl"
+		"$cc_host" $CFLAGS $CFLAGS_ENV $LDFLAGS $LDFLAGS_ENV $STATIC_FLAGS -o tmp.config.sigaltstack -x c++ - -ldl 2> /dev/null << EOL
+			#include <signal.h>
+			#include <stdlib.h>
+			#include <pthread.h>
+			int main() {
+				pthread_t self = pthread_self();
+				void *stacktop = pthread_get_stackaddr_np(self);
+				size_t stack_size = pthread_get_stacksize_np(self);
+				stack_t ss;
+				ss.ss_sp = calloc(SIGSTKSZ, 1);
+				ss.ss_size = SIGSTKSZ;
+				ss.ss_flags = 0;
+				sigaltstack(&ss, NULL);
+				return 0;
+			}
+EOL
+		ret=$?
+		rm -f tmp.config.sigaltstack
+		log 2 "  exit code $ret"
+		if [ $ret -ne 0 ]; then
+			log 1 "checking sigaltstack... no"
+		else
+			log 1 "checking sigaltstack... found"
+			CFLAGS="$CFLAGS -DWITH_SIGALTSTACK"
 		fi
 	fi
 
@@ -3877,6 +3972,7 @@ showhelp() {
 	echo "  --without-libbfd               disable libbfd support, used for improved crash logs (MinGW and Unix/glibc only)"
 	echo "  --without-bfd-extra-debug      disable extra debugging information when using libbfd (MinGW and Unix/glibc only)"
 	echo "  --without-self-gdb-debug       disable improved crash logs using gdb (Linux only)"
+	echo "  --without-self-lldb-debug      disable improved crash logs using lldb (OSX only)"
 	echo ""
 	echo "Some influential environment variables:"
 	echo "  CC                             C compiler command"

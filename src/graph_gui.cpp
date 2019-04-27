@@ -595,7 +595,7 @@ public:
 		int numd = 0;
 		for (CompanyID k = COMPANY_FIRST; k < MAX_COMPANIES; k++) {
 			c = Company::GetIfValid(k);
-			if (c != NULL) {
+			if (c != nullptr) {
 				this->colours[numd] = _colour_gradient[c->colour][6];
 				for (int j = this->num_on_x_axis, i = 0; --j >= 0;) {
 					this->cost[numd][i] = (j >= c->num_valid_stat_ent) ? INVALID_DATAPOINT : GetGraphData(c, j);
@@ -1148,9 +1148,9 @@ private:
 	}
 
 	/** Sort the company league by performance history */
-	static int CDECL PerformanceSorter(const Company * const *c1, const Company * const *c2)
+	static bool PerformanceSorter(const Company * const &c1, const Company * const &c2)
 	{
-		return (*c2)->old_economy[0].performance_history - (*c1)->old_economy[0].performance_history;
+		return c2->old_economy[0].performance_history < c1->old_economy[0].performance_history;
 	}
 
 public:

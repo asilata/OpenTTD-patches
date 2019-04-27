@@ -471,10 +471,10 @@ static const TraceRestrictDropDownListSet *GetSortedCargoTypeDropDownListSet()
 /**
  * Get a DropDownList of the group list
  */
-static DropDownList *GetGroupDropDownList(Owner owner, GroupID group_id, int &selected)
+static DropDownList GetGroupDropDownList(Owner owner, GroupID group_id, int &selected)
 {
 	typedef GUIList<const Group*> GUIGroupList;
-	extern int CDECL GroupNameSorter(const Group * const *a, const Group * const *b);
+	extern bool GroupNameSorter(const Group * const &a, const Group * const &b);
 
 	GUIGroupList list;
 
@@ -488,37 +488,38 @@ static DropDownList *GetGroupDropDownList(Owner owner, GroupID group_id, int &se
 	list.ForceResort();
 	list.Sort(&GroupNameSorter);
 
-	DropDownList *dlist = new DropDownList();
+	DropDownList dlist;
 	selected = -1;
 
 	if (group_id == DEFAULT_GROUP) selected = DEFAULT_GROUP;
-	dlist->push_back(new DropDownListStringItem(STR_GROUP_DEFAULT_TRAINS, DEFAULT_GROUP, false));
+	dlist.emplace_back(new DropDownListStringItem(STR_GROUP_DEFAULT_TRAINS, DEFAULT_GROUP, false));
 
 	for (size_t i = 0; i < list.size(); ++i) {
 		const Group *g = list[i];
 		if (group_id == g->index) selected = group_id;
 		DropDownListParamStringItem *item = new DropDownListParamStringItem(STR_GROUP_NAME, g->index, false);
 		item->SetParam(0, g->index);
-		dlist->push_back(item);
+		dlist.emplace_back(item);
 	}
 
 	return dlist;
 }
 
 /** Sort slots by their name */
-static int CDECL SlotNameSorter(const TraceRestrictSlot * const *a, const TraceRestrictSlot * const *b)
+static bool CDECL SlotNameSorter(const TraceRestrictSlot * const &a, const TraceRestrictSlot * const &b)
 {
-	int r = strnatcmp((*a)->name.c_str(), (*b)->name.c_str()); // Sort by name (natural sorting).
-	if (r == 0) return (*a)->index - (*b)->index;
-	return r;
+	int r = strnatcmp(a->name.c_str(), b->name.c_str()); // Sort by name (natural sorting).
+	if (r == 0) return a->index < b->index;
+	return r < 0;
 }
 
 /**
  * Get a DropDownList of the group list
  */
-DropDownList *GetSlotDropDownList(Owner owner, TraceRestrictSlotID slot_id, int &selected)
+DropDownList GetSlotDropDownList(Owner owner, TraceRestrictSlotID slot_id, int &selected)
 {
 	GUIList<const TraceRestrictSlot*> list;
+	DropDownList dlist;
 
 	const TraceRestrictSlot *slot;
 	FOR_ALL_TRACE_RESTRICT_SLOTS(slot) {
@@ -527,12 +528,11 @@ DropDownList *GetSlotDropDownList(Owner owner, TraceRestrictSlotID slot_id, int 
 		}
 	}
 
-	if (list.size() == 0) return NULL;
+	if (list.size() == 0) return dlist;
 
 	list.ForceResort();
 	list.Sort(&SlotNameSorter);
 
-	DropDownList *dlist = new DropDownList();
 	selected = -1;
 
 	for (size_t i = 0; i < list.size(); ++i) {
@@ -540,7 +540,7 @@ DropDownList *GetSlotDropDownList(Owner owner, TraceRestrictSlotID slot_id, int 
 		if (slot_id == s->index) selected = slot_id;
 		DropDownListParamStringItem *item = new DropDownListParamStringItem(STR_TRACE_RESTRICT_SLOT_NAME, s->index, false);
 		item->SetParam(0, s->index);
-		dlist->push_back(item);
+		dlist.emplace_back(item);
 	}
 
 	return dlist;
@@ -660,7 +660,7 @@ static const TraceRestrictDropDownListSet *GetCondOpDropDownListSet(TraceRestric
 
 	switch (properties.cond_type) {
 		case TRCOT_NONE:
-			return NULL;
+			return nullptr;
 
 		case TRCOT_BINARY:
 			return &set_short;
@@ -669,7 +669,7 @@ static const TraceRestrictDropDownListSet *GetCondOpDropDownListSet(TraceRestric
 			return &set_long;
 	}
 	NOT_REACHED();
-	return NULL;
+	return nullptr;
 }
 
 /**
@@ -879,7 +879,7 @@ static void DrawInstructionStringConditionalInvalidValue(TraceRestrictItem item,
 
 /**
  * Draws an instruction in the programming GUI
- * @param prog The program (may be NULL)
+ * @param prog The program (may be nullptr)
  * @param item The instruction to draw
  * @param index The instruction index
  * @param y Y position for drawing
@@ -968,7 +968,7 @@ static void DrawInstructionString(const TraceRestrictProgram *prog, TraceRestric
 					break;
 
 				case TRVT_TILE_INDEX: {
-					assert(prog != NULL);
+					assert(prog != nullptr);
 					assert(GetTraceRestrictType(item) == TRIT_COND_PBS_ENTRY_SIGNAL);
 					TileIndex tile = *(TraceRestrictProgram::InstructionAt(prog->items, index - 1) + 1);
 					if (tile == INVALID_TILE) {
@@ -1058,7 +1058,7 @@ static void DrawInstructionString(const TraceRestrictProgram *prog, TraceRestric
 					break;
 
 				case TRVT_SLOT_INDEX_INT: {
-					assert(prog != NULL);
+					assert(prog != nullptr);
 					assert(GetTraceRestrictType(item) == TRIT_COND_SLOT_OCCUPANCY);
 					uint32 value = *(TraceRestrictProgram::InstructionAt(prog->items, index - 1) + 1);
 					SetDParam(0, _program_cond_type[GetTraceRestrictCondFlags(item)]);
@@ -1498,8 +1498,8 @@ public:
 
 					case TRVT_GROUP_INDEX: {
 						int selected;
-						DropDownList *dlist = GetGroupDropDownList(this->GetOwner(), GetTraceRestrictValue(item), selected);
-						ShowDropDownList(this, dlist, selected, TR_WIDGET_VALUE_DROPDOWN);
+						DropDownList dlist = GetGroupDropDownList(this->GetOwner(), GetTraceRestrictValue(item), selected);
+						ShowDropDownList(this, std::move(dlist), selected, TR_WIDGET_VALUE_DROPDOWN);
 						break;
 					}
 
@@ -1509,8 +1509,8 @@ public:
 
 					case TRVT_SLOT_INDEX: {
 						int selected;
-						DropDownList *dlist = GetSlotDropDownList(this->GetOwner(), GetTraceRestrictValue(item), selected);
-						if (dlist != NULL) ShowDropDownList(this, dlist, selected, TR_WIDGET_VALUE_DROPDOWN);
+						DropDownList dlist = GetSlotDropDownList(this->GetOwner(), GetTraceRestrictValue(item), selected);
+						if (!dlist.empty()) ShowDropDownList(this, std::move(dlist), selected, TR_WIDGET_VALUE_DROPDOWN);
 						break;
 					}
 
@@ -1533,8 +1533,8 @@ public:
 				switch (GetTraceRestrictTypeProperties(item).value_type) {
 					case TRVT_SLOT_INDEX_INT: {
 						int selected;
-						DropDownList *dlist = GetSlotDropDownList(this->GetOwner(), GetTraceRestrictValue(item), selected);
-						if (dlist != NULL) ShowDropDownList(this, dlist, selected, TR_WIDGET_LEFT_AUX_DROPDOWN);
+						DropDownList dlist = GetSlotDropDownList(this->GetOwner(), GetTraceRestrictValue(item), selected);
+						if (!dlist.empty()) ShowDropDownList(this, std::move(dlist), selected, TR_WIDGET_LEFT_AUX_DROPDOWN);
 						break;
 					}
 
@@ -1920,7 +1920,7 @@ public:
 		int line_height = this->GetWidget<NWidgetBase>(TR_WIDGET_INSTRUCTION_LIST)->resize_y;
 		int scroll_position = this->vscroll->GetPosition();
 
-		// prog may be NULL
+		// prog may be nullptr
 		const TraceRestrictProgram *prog = this->GetProgram();
 
 		int count = this->GetItemCount(prog);
@@ -2049,7 +2049,7 @@ private:
 
 	/**
 	 * Get current program
-	 * This may return NULL if no program currently exists
+	 * This may return nullptr if no program currently exists
 	 */
 	const TraceRestrictProgram *GetProgram() const
 	{
@@ -2060,7 +2060,7 @@ private:
 	 * Get instruction at @p index in program @p prog
 	 * This correctly handles start/end markers, offsets, etc.
 	 * This returns a 0 instruction if out of bounds
-	 * @p prog may be NULL
+	 * @p prog may be nullptr
 	 */
 	TraceRestrictItem GetItem(const TraceRestrictProgram *prog, int index) const
 	{
@@ -2546,21 +2546,21 @@ private:
 	 */
 	void ShowCompanyDropDownListWithValue(CompanyID value, bool missing_ok, int button)
 	{
-		DropDownList *list = new DropDownList();
+		DropDownList list;
 
 		Company *c;
 		FOR_ALL_COMPANIES(c) {
-			list->push_back(MakeCompanyDropDownListItem(c->index));
+			list.emplace_back(MakeCompanyDropDownListItem(c->index));
 			if (c->index == value) missing_ok = true;
 		}
-		list->push_back(new DropDownListStringItem(STR_TRACE_RESTRICT_UNDEFINED_COMPANY, INVALID_COMPANY, false));
+		list.emplace_back(new DropDownListStringItem(STR_TRACE_RESTRICT_UNDEFINED_COMPANY, INVALID_COMPANY, false));
 		if (INVALID_COMPANY == value) missing_ok = true;
 
 		assert(missing_ok == true);
 		assert(button == TR_WIDGET_VALUE_DROPDOWN);
 		this->value_drop_down_is_company = true;
 
-		ShowDropDownList(this, list, value, button, 0, true, false);
+		ShowDropDownList(this, std::move(list), value, button, 0, true, false);
 	}
 
 	/**
@@ -2736,7 +2736,7 @@ static WindowDesc _program_desc(
  */
 void ShowTraceRestrictProgramWindow(TileIndex tile, Track track)
 {
-	if (BringWindowToFrontById(WC_TRACE_RESTRICT, MakeTraceRestrictRefId(tile, track)) != NULL) {
+	if (BringWindowToFrontById(WC_TRACE_RESTRICT, MakeTraceRestrictRefId(tile, track)) != nullptr) {
 		return;
 	}
 
@@ -3267,13 +3267,13 @@ public:
 
 	virtual void OnQueryTextFinished(char *str)
 	{
-		if (str != NULL) {
+		if (str != nullptr) {
 			if (this->slot_set_max_occupancy) {
 				if (!StrEmpty(str)) DoCommandP(0, this->slot_rename | (1 << 16), atoi(str), CMD_ALTER_TRACERESTRICT_SLOT | CMD_MSG(STR_TRACE_RESTRICT_ERROR_SLOT_CAN_T_SET_MAX_OCCUPANCY));
 			} else if (this->slot_rename == NEW_TRACE_RESTRICT_SLOT_ID) {
-				DoCommandP(0, 0, 0, CMD_CREATE_TRACERESTRICT_SLOT | CMD_MSG(STR_TRACE_RESTRICT_ERROR_SLOT_CAN_T_CREATE), NULL, str);
+				DoCommandP(0, 0, 0, CMD_CREATE_TRACERESTRICT_SLOT | CMD_MSG(STR_TRACE_RESTRICT_ERROR_SLOT_CAN_T_CREATE), nullptr, str);
 			} else {
-				DoCommandP(0, this->slot_rename, 0, CMD_ALTER_TRACERESTRICT_SLOT | CMD_MSG(STR_TRACE_RESTRICT_ERROR_SLOT_CAN_T_RENAME), NULL, str);
+				DoCommandP(0, this->slot_rename, 0, CMD_ALTER_TRACERESTRICT_SLOT | CMD_MSG(STR_TRACE_RESTRICT_ERROR_SLOT_CAN_T_RENAME), nullptr, str);
 			}
 		}
 		this->slot_rename = INVALID_TRACE_RESTRICT_SLOT_ID;
@@ -3405,7 +3405,7 @@ void ShowTraceRestrictSlotWindow(CompanyID company)
  * Finds a group list window determined by vehicle type and owner
  * @param vt vehicle type
  * @param owner owner of groups
- * @return pointer to VehicleGroupWindow, NULL if not found
+ * @return pointer to VehicleGroupWindow, nullptr if not found
  */
 static inline TraceRestrictSlotWindow *FindTraceRestrictSlotWindow(Owner owner)
 {
@@ -3424,5 +3424,5 @@ void DeleteTraceRestrictSlotHighlightOfVehicle(const Vehicle *v)
 	if (_special_mouse_mode != WSM_DRAGDROP) return;
 
 	TraceRestrictSlotWindow *w = FindTraceRestrictSlotWindow(v->owner);
-	if (w != NULL) w->UnselectVehicle(v->index);
+	if (w != nullptr) w->UnselectVehicle(v->index);
 }

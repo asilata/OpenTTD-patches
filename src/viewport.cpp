@@ -122,6 +122,7 @@ Point _tile_fract_coords;
 
 
 ViewportSignKdtree _viewport_sign_kdtree(&Kdtree_ViewportSignXYFunc);
+bool _viewport_sign_kdtree_valid = false;
 static int _viewport_sign_maxwidth = 0;
 
 
@@ -274,9 +275,9 @@ static TileInfo *_cur_ti;
 bool _draw_bounding_boxes = false;
 bool _draw_dirty_blocks = false;
 uint _dirty_block_colour = 0;
-static VpSpriteSorter _vp_sprite_sorter = NULL;
+static VpSpriteSorter _vp_sprite_sorter = nullptr;
 
-const byte *_pal2trsp_remap_ptr = NULL;
+const byte *_pal2trsp_remap_ptr = nullptr;
 
 static RailSnapMode _rail_snap_mode = RSM_NO_SNAP; ///< Type of rail track snapping (polyline tool).
 static LineSnapPoints _tile_snap_points; ///< Tile to which a rail track will be snapped to (polyline tool).
@@ -298,12 +299,12 @@ static Point MapXYZToViewport(const ViewPort *vp, int x, int y, int z)
 
 void DeleteWindowViewport(Window *w)
 {
-	if (w->viewport == NULL) return;
+	if (w->viewport == nullptr) return;
 
 	container_unordered_remove(_viewport_window_cache, w->viewport);
 	delete w->viewport->overlay;
 	delete w->viewport;
-	w->viewport = NULL;
+	w->viewport = nullptr;
 }
 
 /**
@@ -321,11 +322,11 @@ void DeleteWindowViewport(Window *w)
 void InitializeWindowViewport(Window *w, int x, int y,
 	int width, int height, uint32 follow_flags, ZoomLevel zoom)
 {
-	assert(w->viewport == NULL);
+	assert(w->viewport == nullptr);
 
 	ViewportData *vp = new ViewportData();
 
-	vp->overlay = NULL;
+	vp->overlay = nullptr;
 	vp->left = x + w->left;
 	vp->top = y + w->top;
 	vp->width = width;
@@ -497,18 +498,18 @@ static void SetViewportPosition(Window *w, int x, int y, bool force_update_overl
  * @param x X coordinate of the xy position
  * @param y Y coordinate of the xy position
  * @return Pointer to the viewport if the xy position is in the viewport of the window,
- *         otherwise \c NULL is returned.
+ *         otherwise \c nullptr is returned.
  */
 ViewPort *IsPtInWindowViewport(const Window *w, int x, int y)
 {
 	ViewPort *vp = w->viewport;
 
-	if (vp != NULL &&
+	if (vp != nullptr &&
 			IsInsideMM(x, vp->left, vp->left + vp->width) &&
 			IsInsideMM(y, vp->top, vp->top + vp->height))
 		return vp;
 
-	return NULL;
+	return nullptr;
 }
 
 /**
@@ -544,8 +545,8 @@ static Point GetTileFromScreenXY(int x, int y, int zoom_x, int zoom_y)
 	ViewPort *vp;
 	Point pt;
 
-	if ( (w = FindWindowFromPt(x, y)) != NULL &&
-			 (vp = IsPtInWindowViewport(w, x, y)) != NULL)
+	if ( (w = FindWindowFromPt(x, y)) != nullptr &&
+			 (vp = IsPtInWindowViewport(w, x, y)) != nullptr)
 				return TranslateXYToTileCoord(vp, zoom_x, zoom_y);
 
 	pt.y = pt.x = -1;
@@ -603,7 +604,7 @@ void HandleZoomMessage(Window *w, const ViewPort *vp, byte widget_zoom_in, byte 
  * @param extra_offs_x Pixel X offset for the sprite position.
  * @param extra_offs_y Pixel Y offset for the sprite position.
  */
-static void AddTileSpriteToDraw(SpriteID image, PaletteID pal, int32 x, int32 y, int z, const SubSprite *sub = NULL, int extra_offs_x = 0, int extra_offs_y = 0)
+static void AddTileSpriteToDraw(SpriteID image, PaletteID pal, int32 x, int32 y, int z, const SubSprite *sub = nullptr, int extra_offs_x = 0, int extra_offs_y = 0)
 {
 	assert((image & SPRITE_MASK) < MAX_SPRITES);
 
@@ -706,8 +707,8 @@ void OffsetGroundSprite(int x, int y)
 		default: NOT_REACHED();
 	}
 
-	/* _vd.last_child == NULL if foundation sprite was clipped by the viewport bounds */
-	if (_vd.last_child != NULL) _vd.foundation[_vd.foundation_part] = _vd.parent_sprites_to_draw.size() - 1;
+	/* _vd.last_child == nullptr if foundation sprite was clipped by the viewport bounds */
+	if (_vd.last_child != nullptr) _vd.foundation[_vd.foundation_part] = (uint)_vd.parent_sprites_to_draw.size() - 1;
 
 	_vd.foundation_offset[_vd.foundation_part].x = x * ZOOM_LVL_BASE;
 	_vd.foundation_offset[_vd.foundation_part].y = y * ZOOM_LVL_BASE;
@@ -782,7 +783,7 @@ void AddSortableSpriteToDraw(SpriteID image, PaletteID pal, int x, int y, int w,
 		return;
 	}
 
-	_vd.last_child = NULL;
+	_vd.last_child = nullptr;
 
 	Point pt = RemapCoords(x, y, z);
 	int tmp_left, tmp_top, tmp_x = pt.x, tmp_y = pt.y;
@@ -930,7 +931,7 @@ void AddChildSpriteScreen(SpriteID image, PaletteID pal, int x, int y, bool tran
 	assert((image & SPRITE_MASK) < MAX_SPRITES);
 
 	/* If the ParentSprite was clipped by the viewport bounds, do not draw the ChildSprites either */
-	if (_vd.last_child == NULL) return;
+	if (_vd.last_child == nullptr) return;
 
 	/* make the sprites transparent with the right palette */
 	if (transparent) {
@@ -938,7 +939,7 @@ void AddChildSpriteScreen(SpriteID image, PaletteID pal, int x, int y, bool tran
 		pal = PALETTE_TO_TRANSPARENT;
 	}
 
-	*_vd.last_child = _vd.child_screen_sprites_to_draw.size();
+	*_vd.last_child = (uint)_vd.child_screen_sprites_to_draw.size();
 
 	/*C++17: ChildScreenSpriteToDraw &cs = */ _vd.child_screen_sprites_to_draw.emplace_back();
 	ChildScreenSpriteToDraw &cs = _vd.child_screen_sprites_to_draw.back();
@@ -1291,8 +1292,8 @@ static void ViewportAddLandscape()
 				_vd.foundation_part = FOUNDATION_PART_NONE;
 				_vd.foundation[0] = -1;
 				_vd.foundation[1] = -1;
-				_vd.last_foundation_child[0] = NULL;
-				_vd.last_foundation_child[1] = NULL;
+				_vd.last_foundation_child[0] = nullptr;
+				_vd.last_foundation_child[1] = nullptr;
 
 				_tile_type_procs[tile_type]->draw_tile_proc(&tile_info);
 				if (tile_info.tile != INVALID_TILE) {
@@ -1749,7 +1750,7 @@ static inline Vehicle *GetVehicleFromWindow(Window *w)
 				break;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 static inline TileIndex GetLastValidOrderLocation(const Vehicle *veh)
@@ -2059,7 +2060,7 @@ void ViewportDrawPlans(const ViewPort *vp)
 }
 #define RETURN_SLOPIFIED_COLOUR(tile, height, colour, colour_light, colour_dark) SLOPIFY_COLOUR(tile, height, colour, colour_light, colour_dark, colour_dark, colour_light, return)
 #define ASSIGN_SLOPIFIED_COLOUR(tile, height, colour, colour_light, colour_dark, to_var) SLOPIFY_COLOUR(tile, height, colour, colour_light, colour_dark, colour_dark, colour_light, to_var =)
-#define GET_SLOPE_INDEX(slope_index) SLOPIFY_COLOUR(tile, NULL, 0, 1, 2, 3, 4, slope_index =)
+#define GET_SLOPE_INDEX(slope_index) SLOPIFY_COLOUR(tile, nullptr, 0, 1, 2, 3, 4, slope_index =)
 
 #define COL8TO32(x) _cur_palette.palette[x].data
 #define COLOUR_FROM_INDEX(x) ((const uint8 *)&(x))[colour_index]
@@ -2101,7 +2102,7 @@ static inline uint32 ViewportMapGetColourVegetation(const TileIndex tile, TileTy
 	uint32 colour;
 	switch (t) {
 		case MP_CLEAR: {
-			Slope slope = show_slope ? (Slope) (GetTileSlope(tile, NULL) & 15) : SLOPE_FLAT;
+			Slope slope = show_slope ? (Slope) (GetTileSlope(tile, nullptr) & 15) : SLOPE_FLAT;
 			uint multi;
 			ClearGround cg = GetClearGround(tile);
 			if (cg == CLEAR_FIELDS && colour_index & 1) {
@@ -2121,7 +2122,7 @@ static inline uint32 ViewportMapGetColourVegetation(const TileIndex tile, TileTy
 			if (IsTransparencySet(TO_TREES)) {
 				ClearGround cg = _treeground_to_clearground[tg];
 				if (cg == CLEAR_SNOW && _settings_game.game_creation.landscape == LT_TROPIC) cg = CLEAR_DESERT;
-				Slope slope = show_slope ? (Slope) (GetTileSlope(tile, NULL) & 15) : SLOPE_FLAT;
+				Slope slope = show_slope ? (Slope) (GetTileSlope(tile, nullptr) & 15) : SLOPE_FLAT;
 				uint32 ground_colour = _vp_map_vegetation_clear_colours[slope][cg][td];
 
 				if (IsInvisibilitySet(TO_TREES)) {
@@ -2164,7 +2165,7 @@ static inline uint32 ViewportMapGetColourVegetation(const TileIndex tile, TileTy
 	if (is_32bpp) {
 		return COL8TO32(colour);
 	} else {
-		if (show_slope) ASSIGN_SLOPIFIED_COLOUR(tile, NULL, colour, _lighten_colour[colour], _darken_colour[colour], colour);
+		if (show_slope) ASSIGN_SLOPIFIED_COLOUR(tile, nullptr, colour, _lighten_colour[colour], _darken_colour[colour], colour);
 		return colour;
 	}
 }
@@ -2197,7 +2198,7 @@ static inline uint32 ViewportMapGetColourIndustries(const TileIndex tile, const 
 	const uint32 colours = ApplyMask(_smallmap_show_heightmap ? cs->height_colours[h] : cs->default_colour, &_smallmap_vehicles_andor[t2]);
 	uint32 colour = COLOUR_FROM_INDEX(colours);
 
-	if (show_slope) ASSIGN_SLOPIFIED_COLOUR(tile, NULL, colour, _lighten_colour[colour], _darken_colour[colour], colour);
+	if (show_slope) ASSIGN_SLOPIFIED_COLOUR(tile, nullptr, colour, _lighten_colour[colour], _darken_colour[colour], colour);
 
 	return IS32(colour);
 }
@@ -2228,7 +2229,7 @@ static inline uint32 ViewportMapGetColourOwner(const TileIndex tile, TileType t,
 
 		const int h = TileHeight(tile);
 		uint32 colour = COLOUR_FROM_INDEX(_heightmap_schemes[_settings_client.gui.smallmap_land_colour].height_colours[h]);
-		if (show_slope) ASSIGN_SLOPIFIED_COLOUR(tile, NULL, colour, _lighten_colour[colour], _darken_colour[colour], colour);
+		if (show_slope) ASSIGN_SLOPIFIED_COLOUR(tile, nullptr, colour, _lighten_colour[colour], _darken_colour[colour], colour);
 		return IS32(colour);
 
 	} else if (o == OWNER_TOWN) {
@@ -2239,7 +2240,7 @@ static inline uint32 ViewportMapGetColourOwner(const TileIndex tile, TileType t,
 	 * So we give the player a hint by mixing his colour with black. */
 	uint32 colour = _legend_land_owners[_company_to_list_pos[o]].colour;
 	if (t != MP_STATION) {
-		if (show_slope) ASSIGN_SLOPIFIED_COLOUR(tile, NULL, colour, _lighten_colour[colour], _darken_colour[colour], colour);
+		if (show_slope) ASSIGN_SLOPIFIED_COLOUR(tile, nullptr, colour, _lighten_colour[colour], _darken_colour[colour], colour);
 	} else {
 		if (GetStationType(tile) == STATION_RAIL) colour = colour_index & 1 ? colour : PC_BLACK;
 	}
@@ -2463,7 +2464,7 @@ static void ViewportMapDrawBridgeTunnel(const ViewPort * const vp, const TunnelB
 template <bool is_32bpp, bool show_slope>
 void ViewportMapDraw(const ViewPort * const vp)
 {
-	assert(vp != NULL);
+	assert(vp != nullptr);
 	Blitter * const blitter = BlitterFactory::GetCurrentBlitter();
 
 	SmallMapWindow::RebuildColourIndexIfNecessary();
@@ -2559,7 +2560,7 @@ void ViewportDoDraw(const ViewPort *vp, int left, int top, int right, int bottom
 	_vd.dpi.left = left & mask;
 	_vd.dpi.top = top & mask;
 	_vd.dpi.pitch = old_dpi->pitch;
-	_vd.last_child = NULL;
+	_vd.last_child = nullptr;
 
 	int x = UnScaleByZoom(_vd.dpi.left - (vp->virtual_left & mask), vp->zoom) + vp->left;
 	int y = UnScaleByZoom(_vd.dpi.top - (vp->virtual_top & mask), vp->zoom) + vp->top;
@@ -2579,7 +2580,7 @@ void ViewportDoDraw(const ViewPort *vp, int left, int top, int right, int bottom
 			if (_settings_client.gui.show_slopes_on_viewport_map) ViewportMapDraw<true, true>(vp);
 			else ViewportMapDraw<true, false>(vp);
 		} else {
-			_pal2trsp_remap_ptr = IsTransparencySet(TO_TREES) ? GetNonSprite(GB(PALETTE_TO_TRANSPARENT, 0, PALETTE_WIDTH), ST_RECOLOUR) + 1 : NULL;
+			_pal2trsp_remap_ptr = IsTransparencySet(TO_TREES) ? GetNonSprite(GB(PALETTE_TO_TRANSPARENT, 0, PALETTE_WIDTH), ST_RECOLOUR) + 1 : nullptr;
 			if (_settings_client.gui.show_slopes_on_viewport_map) ViewportMapDraw<false, true>(vp);
 			else ViewportMapDraw<false, false>(vp);
 		}
@@ -2615,7 +2616,7 @@ void ViewportDoDraw(const ViewPort *vp, int left, int top, int right, int bottom
 	dp.height = UnScaleByZoom(dp.height, zoom);
 	_cur_dpi = &dp;
 
-	if (vp->overlay != NULL && vp->overlay->GetCargoMask() != 0 && vp->overlay->GetCompanyMask() != 0) {
+	if (vp->overlay != nullptr && vp->overlay->GetCargoMask() != 0 && vp->overlay->GetCompanyMask() != 0) {
 		/* translate to window coordinates */
 		dp.left = x;
 		dp.top = y;
@@ -2919,7 +2920,7 @@ void MarkAllViewportMapsDirty(int left, int top, int right, int bottom)
 	Window *w;
 	FOR_ALL_WINDOWS_FROM_BACK(w) {
 		const ViewPort *vp = w->viewport;
-		if (vp != NULL && vp->zoom >= ZOOM_LVL_DRAW_MAP) {
+		if (vp != nullptr && vp->zoom >= ZOOM_LVL_DRAW_MAP) {
 			assert(vp->width != 0);
 			MarkViewportDirty(vp, left, top, right, bottom);
 		}
@@ -2930,7 +2931,7 @@ void ConstrainAllViewportsZoom()
 {
 	Window *w;
 	FOR_ALL_WINDOWS_FROM_FRONT(w) {
-		if (w->viewport == NULL) continue;
+		if (w->viewport == nullptr) continue;
 
 		ZoomLevel zoom = static_cast<ZoomLevel>(Clamp(w->viewport->zoom, _settings_client.gui.zoom_min, _settings_client.gui.zoom_max));
 		if (zoom != w->viewport->zoom) {
@@ -3187,22 +3188,24 @@ static bool CheckClickOnViewportSign(const ViewPort *vp, int x, int y, const Vie
  */
 static bool CheckClickOnViewportSign(const ViewPort *vp, int x, int y)
 {
+	if (_game_mode == GM_MENU) return false;
+
 	x = ScaleByZoom(x - vp->left, vp->zoom) + vp->virtual_left;
 	y = ScaleByZoom(y - vp->top, vp->zoom) + vp->virtual_top;
 
 	Rect search_rect{ x - 1, y - 1, x + 1, y + 1 };
 	search_rect = ExpandRectWithViewportSignMargins(search_rect, vp->zoom);
 
-	bool show_stations = HasBit(_display_opt, DO_SHOW_STATION_NAMES) && _game_mode != GM_MENU;
-	bool show_waypoints = HasBit(_display_opt, DO_SHOW_WAYPOINT_NAMES) && _game_mode != GM_MENU;
-	bool show_towns = HasBit(_display_opt, DO_SHOW_TOWN_NAMES) && _game_mode != GM_MENU;
+	bool show_stations = HasBit(_display_opt, DO_SHOW_STATION_NAMES) && !IsInvisibilitySet(TO_SIGNS);
+	bool show_waypoints = HasBit(_display_opt, DO_SHOW_WAYPOINT_NAMES) && !IsInvisibilitySet(TO_SIGNS);
+	bool show_towns = HasBit(_display_opt, DO_SHOW_TOWN_NAMES);
 	bool show_signs = HasBit(_display_opt, DO_SHOW_SIGNS) && !IsInvisibilitySet(TO_SIGNS);
 	bool show_competitors = HasBit(_display_opt, DO_SHOW_COMPETITOR_SIGNS);
 
 	/* Topmost of each type that was hit */
-	BaseStation *st = NULL, *last_st = NULL;
-	Town *t = NULL, *last_t = NULL;
-	Sign *si = NULL, *last_si = NULL;
+	BaseStation *st = nullptr, *last_st = nullptr;
+	Town *t = nullptr, *last_t = nullptr;
+	Sign *si = nullptr, *last_si = nullptr;
 
 	/* See ViewportAddKdtreeSigns() for details on the search logic */
 	_viewport_sign_kdtree.FindContained(search_rect.left, search_rect.top, search_rect.right, search_rect.bottom, [&](const ViewportSignKdtreeItem & item) {
@@ -3240,17 +3243,17 @@ static bool CheckClickOnViewportSign(const ViewPort *vp, int x, int y)
 	});
 
 	/* Select which hit to handle based on priority */
-	if (last_st != NULL) {
+	if (last_st != nullptr) {
 		if (Station::IsExpected(last_st)) {
 			ShowStationViewWindow(last_st->index);
 		} else {
 			ShowWaypointWindow(Waypoint::From(last_st));
 		}
 		return true;
-	} else if (last_t != NULL) {
+	} else if (last_t != nullptr) {
 		ShowTownViewWindow(last_t->index);
 		return true;
-	} else if (last_si != NULL) {
+	} else if (last_si != nullptr) {
 		HandleClickOnSign(last_si);
 		return true;
 	} else {
@@ -3265,11 +3268,13 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeStation(StationID id)
 	item.type = VKI_STATION;
 	item.id.station = id;
 
-	const Station *st = Station::Get(id);
+	Station *st = Station::Get(id);
 	Point pt = RemapCoords2(TileX(st->xy) * TILE_SIZE, TileY(st->xy) * TILE_SIZE);
 
 	pt.y -= 32 * ZOOM_LVL_BASE;
 	if ((st->facilities & FACIL_AIRPORT) && st->airport.type == AT_OILRIG) pt.y -= 16 * ZOOM_LVL_BASE;
+
+	st->viewport_sign_kdtree_pt = pt;
 
 	item.center = pt.x;
 	item.top = pt.y;
@@ -3280,16 +3285,28 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeStation(StationID id)
 	return item;
 }
 
+ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeStation(StationID id, Point pt)
+{
+	ViewportSignKdtreeItem item;
+	item.type = VKI_STATION;
+	item.id.station = id;
+	item.center = pt.x;
+	item.top = pt.y;
+	return item;
+}
+
 ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeWaypoint(StationID id)
 {
 	ViewportSignKdtreeItem item;
 	item.type = VKI_WAYPOINT;
 	item.id.station = id;
 
-	const Waypoint *st = Waypoint::Get(id);
+	Waypoint *st = Waypoint::Get(id);
 	Point pt = RemapCoords2(TileX(st->xy) * TILE_SIZE, TileY(st->xy) * TILE_SIZE);
 
 	pt.y -= 32 * ZOOM_LVL_BASE;
+
+	st->viewport_sign_kdtree_pt = pt;
 
 	item.center = pt.x;
 	item.top = pt.y;
@@ -3297,6 +3314,16 @@ ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeWaypoint(StationID id)
 	/* Assume the sign can be a candidate for drawing, so measure its width */
 	_viewport_sign_maxwidth = max<int>(_viewport_sign_maxwidth, st->sign.width_normal);
 
+	return item;
+}
+
+ViewportSignKdtreeItem ViewportSignKdtreeItem::MakeWaypoint(StationID id, Point pt)
+{
+	ViewportSignKdtreeItem item;
+	item.type = VKI_WAYPOINT;
+	item.id.station = id;
+	item.center = pt.x;
+	item.top = pt.y;
 	return item;
 }
 
@@ -3344,6 +3371,14 @@ void RebuildViewportKdtree()
 {
 	/* Reset biggest size sign seen */
 	_viewport_sign_maxwidth = 0;
+
+	if (_network_dedicated) {
+		_viewport_sign_kdtree_valid = false;
+		_viewport_sign_kdtree.Build<ViewportSignKdtreeItem*>(nullptr, nullptr);
+		return;
+	}
+
+	_viewport_sign_kdtree_valid = true;
 
 	std::vector<ViewportSignKdtreeItem> items;
 	items.reserve(BaseStation::GetNumItems() + Town::GetNumItems() + Sign::GetNumItems());
@@ -3400,7 +3435,7 @@ static void PlaceObject()
 	_tile_fract_coords.y = pt.y & TILE_UNIT_MASK;
 
 	w = _thd.GetCallbackWnd();
-	if (w != NULL) w->OnPlaceObject(pt, TileVirtXY(pt.x, pt.y));
+	if (w != nullptr) w->OnPlaceObject(pt, TileVirtXY(pt.x, pt.y));
 }
 
 bool HandleViewportDoubleClicked(Window *w, int x, int y)
@@ -3431,7 +3466,7 @@ bool HandleViewportClicked(const ViewPort *vp, int x, int y, bool double_click)
 	const Vehicle *v = CheckClickOnVehicle(vp, x, y);
 
 	if (_thd.place_mode & HT_VEHICLE) {
-		if (v != NULL && VehicleClicked(v)) return true;
+		if (v != nullptr && VehicleClicked(v)) return true;
 	}
 
 	/* Vehicle placement mode already handled above. */
@@ -3455,7 +3490,7 @@ bool HandleViewportClicked(const ViewPort *vp, int x, int y, bool double_click)
 	if (CheckClickOnViewportSign(vp, x, y)) return true;
 	bool result = CheckClickOnLandscape(vp, x, y);
 
-	if (v != NULL) {
+	if (v != nullptr) {
 		DEBUG(misc, 2, "Vehicle %d (index %d) at %p", v->unitnumber, v->index, v);
 		if (IsCompanyBuildableVehicleType(v)) {
 			v = v->First();
@@ -3473,7 +3508,7 @@ bool HandleViewportClicked(const ViewPort *vp, int x, int y, bool double_click)
 
 void RebuildViewportOverlay(Window *w, bool incremental)
 {
-	if (w->viewport->overlay != NULL &&
+	if (w->viewport->overlay != nullptr &&
 			w->viewport->overlay->GetCompanyMask() != 0 &&
 			w->viewport->overlay->GetCargoMask() != 0) {
 		w->viewport->overlay->RebuildCache(incremental);
@@ -3483,7 +3518,7 @@ void RebuildViewportOverlay(Window *w, bool incremental)
 
 bool IsViewportOverlayOutsideCachedRegion(Window *w)
 {
-	if (w->viewport->overlay != NULL &&
+	if (w->viewport->overlay != nullptr &&
 			w->viewport->overlay->GetCompanyMask() != 0 &&
 			w->viewport->overlay->GetCargoMask() != 0) {
 		return !w->viewport->overlay->CacheStillValid();
@@ -3618,7 +3653,7 @@ bool TileHighlightData::IsDraggingDiagonal()
 
 /**
  * Get the window that started the current highlighting.
- * @return The window that requested the current tile highlighting, or \c NULL if not available.
+ * @return The window that requested the current tile highlighting, or \c nullptr if not available.
  */
 Window *TileHighlightData::GetCallbackWnd()
 {
@@ -4239,14 +4274,14 @@ static LineSnapPoint *FindBestPolyline(const Point &pt, LineSnapPoint *snap_poin
 	/* Find the best polyline (a pair of two lines - the white one and the blue
 	 * one) led from any of saved snap points to the mouse cursor. */
 
-	LineSnapPoint *best_snap_point = NULL; // the best polyline we found so far is led from this snap point
+	LineSnapPoint *best_snap_point = nullptr; // the best polyline we found so far is led from this snap point
 
 	for (int i = 0; i < (int)num_points; i++) {
 		/* try to fit a polyline */
 		PolylineInfo polyline;
 		if (!FindPolyline(pt, snap_points[i], &polyline)) continue; // skip non-matching snap points
 		/* check whether we've found a better polyline */
-		if (best_snap_point != NULL) {
+		if (best_snap_point != nullptr) {
 			/* firstly choose shorter polyline (the one with smaller amount of
 			 * track pieces composing booth the white and the blue line) */
 			uint cur_len = polyline.first_len + polyline.second_len;
@@ -4487,7 +4522,7 @@ static HighLightStyle CalcPolyrailDrawstyle(Point pt, bool dragging)
 		snap_point = FindBestPolyline(pt, _rail_snap_points.data(), _rail_snap_points.size(), &line);
 	}
 
-	if (snap_point == NULL) return HT_NONE; // no match
+	if (snap_point == nullptr) return HT_NONE; // no match
 
 	if (lock_snapping && _current_snap_lock.x == -1) {
 		/* lock down the snap point */
@@ -4742,7 +4777,7 @@ EventState VpHandlePlaceSizingDrag()
 
 	/* stop drag mode if the window has been closed */
 	Window *w = _thd.GetCallbackWnd();
-	if (w == NULL) {
+	if (w == nullptr) {
 		ResetObjectToPlace();
 		return ES_HANDLED;
 	}
@@ -4810,7 +4845,7 @@ void SetObjectToPlace(CursorID icon, PaletteID pal, HighLightStyle mode, WindowC
 		 * this function might in some cases reset the newly set object to
 		 * place or not properly reset the original selection. */
 		_thd.window_class = WC_INVALID;
-		if (w != NULL) {
+		if (w != nullptr) {
 			w->OnPlaceObjectAbort();
 			HideMeasurementTooltips();
 		}
@@ -4901,7 +4936,7 @@ void InitializeSpriteSorter()
 			break;
 		}
 	}
-	assert(_vp_sprite_sorter != NULL);
+	assert(_vp_sprite_sorter != nullptr);
 }
 
 /**

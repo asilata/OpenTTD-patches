@@ -270,7 +270,7 @@ public:
 	byte sorting_order;
 
 	/**
-	 * NewGRF providing the Action3 for the railtype. NULL if not available.
+	 * NewGRF providing the Action3 for the railtype. nullptr if not available.
 	 */
 	const GRFFile *grffile[RTSG_END];
 
@@ -281,7 +281,7 @@ public:
 
 	inline bool UsesOverlay() const
 	{
-		return this->group[RTSG_GROUND] != NULL;
+		return this->group[RTSG_GROUND] != nullptr;
 	}
 
 	/**
@@ -455,7 +455,8 @@ bool ValParamRailtype(const RailType rail);
 RailTypes AddDateIntroducedRailTypes(RailTypes current, Date date);
 
 RailType GetBestRailtype(const CompanyID company);
-RailTypes GetCompanyRailtypes(const CompanyID c);
+RailTypes GetCompanyRailtypes(CompanyID company, bool introduces = true);
+RailTypes GetRailTypes(bool introduces);
 
 RailType GetRailTypeByLabel(RailTypeLabel label, bool allow_alternate_labels = true);
 
@@ -463,15 +464,14 @@ void ResetRailTypes();
 void InitRailTypes();
 RailType AllocateRailType(RailTypeLabel label);
 
-extern RailType _sorted_railtypes[RAILTYPE_END];
-extern uint8 _sorted_railtypes_size;
+extern std::vector<RailType> _sorted_railtypes;
 extern RailTypes _railtypes_hidden_mask;
 
 /**
  * Loop header for iterating over railtypes, sorted by sortorder.
  * @param var Railtype.
  */
-#define FOR_ALL_SORTED_RAILTYPES(var) for (uint8 index = 0; index < _sorted_railtypes_size && (var = _sorted_railtypes[index], true) ; index++)
+#define FOR_ALL_SORTED_RAILTYPES(var) for (uint8 index = 0; index < _sorted_railtypes.size() && (var = _sorted_railtypes[index], true) ; index++)
 
 /** Enum holding the signal offset in the sprite sheet according to the side it is representing. */
 enum SignalOffsets {

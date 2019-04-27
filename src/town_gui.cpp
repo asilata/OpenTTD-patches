@@ -36,10 +36,9 @@
 #include "newgrf_house.h"
 #include "date_func.h"
 #include "core/random_func.hpp"
-
 #include "widgets/town_widget.h"
-
 #include "table/strings.h"
+#include <algorithm>
 
 #include "safeguards.h"
 
@@ -267,7 +266,7 @@ public:
 				int y = this->GetRowFromWidget(pt.y, WID_TA_COMMAND_LIST, 1, FONT_HEIGHT_NORMAL);
 				if (!IsInsideMM(y, 0, 5)) return;
 
-				y = GetNthSetBit(GetMaskOfTownActions(NULL, _local_company, this->town), y + this->vscroll->GetPosition() - 1);
+				y = GetNthSetBit(GetMaskOfTownActions(nullptr, _local_company, this->town), y + this->vscroll->GetPosition() - 1);
 				if (y >= 0) {
 					this->sel_index = y;
 					this->SetDirty();
@@ -368,7 +367,7 @@ public:
 			uint cargo_text_right = r.right - WD_FRAMERECT_RIGHT - (rtl ? 20 : 0);
 
 			const CargoSpec *cargo = FindFirstCargoWithTownEffect((TownEffect)i);
-			assert(cargo != NULL);
+			assert(cargo != nullptr);
 
 			StringID string;
 
@@ -412,7 +411,7 @@ public:
 			DrawString(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_LEFT, y += FONT_HEIGHT_NORMAL, STR_TOWN_VIEW_NOISE_IN_TOWN);
 		}
 
-		if (this->town->text != NULL) {
+		if (this->town->text != nullptr) {
 			SetDParamStr(0, this->town->text);
 			DrawStringMultiLine(r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, y += FONT_HEIGHT_NORMAL, UINT16_MAX, STR_JUST_RAW_STRING, TC_BLACK);
 		}
@@ -490,7 +489,7 @@ public:
 
 		if (_settings_game.economy.station_noise_level) aimed_height += FONT_HEIGHT_NORMAL;
 
-		if (this->town->text != NULL) {
+		if (this->town->text != nullptr) {
 			SetDParamStr(0, this->town->text);
 			aimed_height += GetStringHeight(STR_JUST_RAW_STRING, width - WD_FRAMERECT_LEFT - WD_FRAMERECT_RIGHT);
 		}
@@ -509,7 +508,7 @@ public:
 
 	void OnResize() override
 	{
-		if (this->viewport != NULL) {
+		if (this->viewport != nullptr) {
 			NWidgetViewport *nvp = this->GetWidget<NWidgetViewport>(WID_TV_VIEWPORT);
 			nvp->UpdateViewportCoordinates(this);
 
@@ -532,9 +531,9 @@ public:
 
 	void OnQueryTextFinished(char *str) override
 	{
-		if (str == NULL) return;
+		if (str == nullptr) return;
 
-		DoCommandP(0, this->window_number, 0, CMD_RENAME_TOWN | CMD_MSG(STR_ERROR_CAN_T_RENAME_TOWN), NULL, str);
+		DoCommandP(0, this->window_number, 0, CMD_RENAME_TOWN | CMD_MSG(STR_ERROR_CAN_T_RENAME_TOWN), nullptr, str);
 	}
 };
 
@@ -665,63 +664,64 @@ private:
 
 			this->towns.shrink_to_fit();
 			this->towns.RebuildDone();
-			this->vscroll->SetCount(this->towns.size()); // Update scrollbar as well.
+			this->vscroll->SetCount((uint)this->towns.size()); // Update scrollbar as well.
 		}
 		/* Always sort the towns. */
-		this->last_town = NULL;
+		this->last_town = nullptr;
 		this->towns.Sort();
 		this->SetWidgetDirty(WID_TD_LIST); // Force repaint of the displayed towns.
 	}
 
 	/** Sort by town name */
-	static int CDECL TownNameSorter(const Town * const *a, const Town * const *b)
+	static bool TownNameSorter(const Town * const &a, const Town * const &b)
 	{
 		static char buf_cache[64];
-		const Town *ta = *a;
-		const Town *tb = *b;
 		char buf[64];
 
-		SetDParam(0, ta->index);
+		SetDParam(0, a->index);
 		GetString(buf, STR_TOWN_NAME, lastof(buf));
 
 		/* If 'b' is the same town as in the last round, use the cached value
 		 * We do this to speed stuff up ('b' is called with the same value a lot of
 		 * times after each other) */
-		if (tb != last_town) {
-			last_town = tb;
-			SetDParam(0, tb->index);
+		if (b != last_town) {
+			last_town = b;
+			SetDParam(0, b->index);
 			GetString(buf_cache, STR_TOWN_NAME, lastof(buf_cache));
 		}
 
-		return strnatcmp(buf, buf_cache); // Sort by name (natural sorting).
+		return strnatcmp(buf, buf_cache) < 0; // Sort by name (natural sorting).
 	}
 
 	/** Sort by population (default descending, as big towns are of the most interest). */
-	static int CDECL TownPopulationSorter(const Town * const *a, const Town * const *b)
+	static bool TownPopulationSorter(const Town * const &a, const Town * const &b)
 	{
-		uint32 a_population = (*a)->cache.population;
-		uint32 b_population = (*b)->cache.population;
+		uint32 a_population = a->cache.population;
+		uint32 b_population = b->cache.population;
 		if (a_population == b_population) return TownDirectoryWindow::TownNameSorter(a, b);
-		return (a_population < b_population) ? -1 : 1;
+		return a_population < b_population;
 	}
 
 	/** Sort by town rating */
-	static int CDECL TownRatingSorter(const Town * const *a, const Town * const *b)
+	static bool TownRatingSorter(const Town * const &a, const Town * const &b)
 	{
-		int before = TownDirectoryWindow::last_sorting.order ? 1 : -1; // Value to get 'a' before 'b'.
+		bool before = !TownDirectoryWindow::last_sorting.order; // Value to get 'a' before 'b'.
 
 		/* Towns without rating are always after towns with rating. */
-		if (HasBit((*a)->have_ratings, _local_company)) {
-			if (HasBit((*b)->have_ratings, _local_company)) {
-				int16 a_rating = (*a)->ratings[_local_company];
-				int16 b_rating = (*b)->ratings[_local_company];
+		if (HasBit(a->have_ratings, _local_company)) {
+			if (HasBit(b->have_ratings, _local_company)) {
+				int16 a_rating = a->ratings[_local_company];
+				int16 b_rating = b->ratings[_local_company];
 				if (a_rating == b_rating) return TownDirectoryWindow::TownNameSorter(a, b);
-				return (a_rating < b_rating) ? -1 : 1;
+				return a_rating < b_rating;
 			}
 			return before;
 		}
-		if (HasBit((*b)->have_ratings, _local_company)) return -before;
-		return -before * TownDirectoryWindow::TownNameSorter(a, b); // Sort unrated towns always on ascending town name.
+		if (HasBit(b->have_ratings, _local_company)) return !before;
+
+		/* Sort unrated towns always on ascending town name. */
+		if (before) return TownDirectoryWindow::TownNameSorter(a, b);
+		return !TownDirectoryWindow::TownNameSorter(a, b);
 	}
 
 public:
@@ -835,7 +835,7 @@ public:
 				for (uint i = 0; i < this->towns.size(); i++) {
 					const Town *t = this->towns[i];
 
-					assert(t != NULL);
+					assert(t != nullptr);
 
 					SetDParam(0, t->index);
 					SetDParamMaxDigits(1, 8);
@@ -888,7 +888,7 @@ public:
 				if (id_v >= this->towns.size()) return; // click out of town bounds
 
 				const Town *t = this->towns[id_v];
-				assert(t != NULL);
+				assert(t != nullptr);
 				if (_ctrl_pressed) {
 					ShowExtraViewPortWindow(t->xy);
 				} else {
@@ -944,7 +944,7 @@ public:
 };
 
 Listing TownDirectoryWindow::last_sorting = {false, 0};
-const Town *TownDirectoryWindow::last_town = NULL;
+const Town *TownDirectoryWindow::last_town = nullptr;
 
 /** Names of the sorting functions. */
 const StringID TownDirectoryWindow::sorter_names[] = {
@@ -1117,7 +1117,7 @@ public:
 
 	void ExecuteFoundTownCommand(TileIndex tile, bool random, StringID errstr, CommandCallback cc)
 	{
-		const char *name = NULL;
+		const char *name = nullptr;
 
 		if (!this->townnamevalid) {
 			name = this->townname_editbox.text.buf;
@@ -1220,24 +1220,24 @@ class GUIHouseList : public std::vector<HouseID> {
 protected:
 	std::vector<uint16> house_sets; ///< list of house sets, each item points the first house of the set in the houses array
 
-	static int CDECL HouseSorter(const HouseID *a, const HouseID *b)
+	static bool HouseSorter(const HouseID &a, const HouseID &b)
 	{
-		const HouseSpec *a_hs = HouseSpec::Get(*a);
+		const HouseSpec *a_hs = HouseSpec::Get(a);
 		const GRFFile *a_set = a_hs->grf_prop.grffile;
-		const HouseSpec *b_hs = HouseSpec::Get(*b);
+		const HouseSpec *b_hs = HouseSpec::Get(b);
 		const GRFFile *b_set = b_hs->grf_prop.grffile;
 
-		int ret = (a_set != NULL) - (b_set != NULL);
+		int ret = (a_set != nullptr) - (b_set != nullptr);
 		if (ret == 0) {
-			if (a_set != NULL) {
+			if (a_set != nullptr) {
 				assert_compile(sizeof(a_set->grfid) <= sizeof(int));
 				ret = a_set->grfid - b_set->grfid;
 				if (ret == 0) ret = a_hs->grf_prop.local_id - b_hs->grf_prop.local_id;
 			} else {
-				ret = *a - *b;
+				ret = a - b;
 			}
 		}
-		return ret;
+		return ret < 0;
 	}
 
 public:
@@ -1288,7 +1288,7 @@ public:
 	{
 		assert(house_set < this->NumHouseSets());
 		const GRFFile *gf = HouseSpec::Get(this->GetHouseAtOffset(house_set, 0))->grf_prop.grffile;
-		if (gf != NULL) return GetGRFConfig(gf->grfid)->GetName();
+		if (gf != nullptr) return GetGRFConfig(gf->grfid)->GetName();
 
 		static char name[DRAW_STRING_BUFFER];
 		GetString(name, STR_BASIC_HOUSE_SET_NAME, lastof(name));
@@ -1324,11 +1324,11 @@ public:
 		}
 
 		/* arrange items */
-		QSortT(this->data(), this->size(), HouseSorter);
+		std::sort(this->begin(), this->end(), HouseSorter);
 
 		/* list house sets */
 		this->house_sets.clear();
-		const GRFFile *last_set = NULL;
+		const GRFFile *last_set = nullptr;
 		for (uint i = 0; i < this->size(); i++) {
 			const HouseSpec *hs = HouseSpec::Get((*this)[i]);
 			/* add house set */
@@ -1440,7 +1440,7 @@ public:
 
 		/* if we have exactly one set of houses and it's not the default one then display it's name in the title bar */
 		this->GetWidget<NWidgetCore>(WID_HP_CAPTION)->widget_data =
-				(this->house_list.NumHouseSets() == 1 && HouseSpec::Get(this->house_list[0])->grf_prop.grffile != NULL) ?
+				(this->house_list.NumHouseSets() == 1 && HouseSpec::Get(this->house_list[0])->grf_prop.grffile != nullptr) ?
 				STR_HOUSE_BUILD_CUSTOM_CAPTION : STR_HOUSE_BUILD_CAPTION;
 
 		/* hide widgets if we have no houses to show */

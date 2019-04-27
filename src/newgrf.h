@@ -122,13 +122,13 @@ enum GRFPropertyMapFallbackMode {
 };
 
 struct GRFPropertyMapDefinition {
-	const char *name; // NULL indicates the end of the list
+	const char *name; // nullptr indicates the end of the list
 	int id;
 	uint8 feature;
 
 	/** Create empty object used to identify the end of a list. */
 	GRFPropertyMapDefinition() :
-		name(NULL),
+		name(nullptr),
 		id(0),
 		feature(0)
 	{}
@@ -174,13 +174,13 @@ struct Action5Type {
 };
 
 struct Action5TypeRemapDefinition {
-	const char *name; // NULL indicates the end of the list
+	const char *name; // nullptr indicates the end of the list
 	const Action5Type info;
 
 	/** Create empty object used to identify the end of a list. */
 	Action5TypeRemapDefinition() :
-		name(NULL),
-		info({ A5BLOCK_INVALID, 0, 0, 0, NULL })
+		name(nullptr),
+		info({ A5BLOCK_INVALID, 0, 0, 0, nullptr })
 	{}
 
 	Action5TypeRemapDefinition(const char *type_name, Action5BlockType block_type, SpriteID sprite_base, uint16 min_sprites, uint16 max_sprites, const char *info_name) :
@@ -226,7 +226,7 @@ struct GRFFile : ZeroedMemoryAllocator {
 
 	GRFFilePropertyRemapSet action0_property_remaps[GSF_END];
 	Action5TypeRemapSet action5_type_remaps;
-	AutoFreeSmallVector<const char *> remap_unknown_property_names;
+	std::vector<std::unique_ptr<const char, FreeDeleter>> remap_unknown_property_names;
 
 	uint32 param[0x80];
 	uint param_end;  ///< one more than the highest set parameter
@@ -277,7 +277,7 @@ struct GRFLoadedFeatures {
 	uint64 used_liveries;     ///< Bitmask of #LiveryScheme used by the defined engines.
 	bool has_newhouses;       ///< Set if there are any newhouses loaded.
 	bool has_newindustries;   ///< Set if there are any newindustries loaded.
-	ShoreReplacement shore;   ///< It which way shore sprites were replaced.
+	ShoreReplacement shore;   ///< In which way shore sprites were replaced.
 };
 
 /**

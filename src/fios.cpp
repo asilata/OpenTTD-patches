@@ -47,22 +47,20 @@ extern void GetOldSaveGameName(const char *file, char *title, const char *last);
 
 /**
  * Compare two FiosItem's. Used with sort when sorting the file list.
- * @param da A pointer to the first FiosItem to compare.
- * @param db A pointer to the second FiosItem to compare.
- * @return -1, 0 or 1, depending on how the two items should be sorted.
+ * @param other The FiosItem to compare to.
+ * @return for ascending order: returns true if da < db. Vice versa for descending order.
  */
-int CDECL CompareFiosItems(const FiosItem *da, const FiosItem *db)
+bool FiosItem::operator< (const FiosItem &other) const
 {
-	int r = 0;
+	int r = false;
 
-	if ((_savegame_sort_order & SORT_BY_NAME) == 0 && da->mtime != db->mtime) {
-		r = da->mtime < db->mtime ? -1 : 1;
+	if ((_savegame_sort_order & SORT_BY_NAME) == 0 && (*this).mtime != other.mtime) {
+		r = (*this).mtime - other.mtime;
 	} else {
-		r = strcasecmp(da->title, db->title);
+		r = strcasecmp((*this).title, other.title);
 	}
-
-	if (_savegame_sort_order & SORT_DESCENDING) r = -r;
-	return r;
+	if (r == 0) return false;
+	return (_savegame_sort_order & SORT_DESCENDING) ? r > 0 : r < 0;
 }
 
 FileList::~FileList()
@@ -105,7 +103,7 @@ void FileList::BuildFileList(AbstractFileType abstract_filetype, SaveLoadOperati
  * Find file information of a file by its name from the file list.
  * @param file The filename to return information about. Can be the actual name
  *             or a numbered entry into the filename list.
- * @return The information on the file, or \c NULL if the file is not available.
+ * @return The information on the file, or \c nullptr if the file is not available.
  */
 const FiosItem *FileList::FindItem(const char *file)
 {
@@ -130,14 +128,14 @@ const FiosItem *FileList::FindItem(const char *file)
 		if (strcmp(long_file, item->title) == 0) return item;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 /**
  * Get descriptive texts. Returns the path and free space
  * left on the device
  * @param path string describing the path
- * @param total_free total free space in megabytes, optional (can be NULL)
+ * @param total_free total free space in megabytes, optional (can be nullptr)
  * @return StringID describing the path (free space or failure)
  */
 StringID FiosGetDescText(const char **path, uint64 *total_free)
@@ -149,7 +147,7 @@ StringID FiosGetDescText(const char **path, uint64 *total_free)
 /**
  * Browse to a new path based on the passed \a item, starting at #_fios_path.
  * @param *item Item telling us what to do.
- * @return A filename w/path if we reached a file, otherwise \c NULL.
+ * @return A filename w/path if we reached a file, otherwise \c nullptr.
  */
 const char *FiosBrowseTo(const FiosItem *item)
 {
@@ -164,13 +162,13 @@ const char *FiosBrowseTo(const FiosItem *item)
 			break;
 
 		case FIOS_TYPE_PARENT: {
-			/* Check for possible NULL ptr */
+			/* Check for possible nullptr ptr */
 			char *s = strrchr(_fios_path, PATHSEPCHAR);
-			if (s != NULL && s != _fios_path) {
+			if (s != nullptr && s != _fios_path) {
 				s[0] = '\0'; // Remove last path separator character, so we can go up one level.
 			}
 			s = strrchr(_fios_path, PATHSEPCHAR);
-			if (s != NULL) {
+			if (s != nullptr) {
 				s[1] = '\0'; // go up a directory
 			}
 			break;
@@ -194,13 +192,13 @@ const char *FiosBrowseTo(const FiosItem *item)
 			return item->name;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 /**
  * Construct a filename from its components in destination buffer \a buf.
  * @param buf Destination buffer.
- * @param path Directory path, may be \c NULL.
+ * @param path Directory path, may be \c nullptr.
  * @param name Filename.
  * @param ext Filename extension (use \c "" for no extension).
  * @param last Last element of buffer \a buf.
@@ -211,7 +209,7 @@ static void FiosMakeFilename(char *buf, const char *path, const char *name, cons
 
 	/* Don't append the extension if it is already there */
 	period = strrchr(name, '.');
-	if (period != NULL && strcasecmp(period, ext) == 0) ext = "";
+	if (period != nullptr && strcasecmp(period, ext) == 0) ext = "";
 	seprintf(buf, last, "%s" PATHSEP "%s%s", path, name, ext);
 }
 
@@ -288,7 +286,7 @@ public:
 bool FiosFileScanner::AddFile(const char *filename, size_t basepath_length, const char *tar_filename)
 {
 	const char *ext = strrchr(filename, '.');
-	if (ext == NULL) return false;
+	if (ext == nullptr) return false;
 
 	char fios_title[64];
 	fios_title[0] = '\0'; // reset the title;
@@ -320,7 +318,7 @@ bool FiosFileScanner::AddFile(const char *filename, size_t basepath_length, cons
 	const char *t = fios_title;
 	if (StrEmpty(fios_title)) {
 		t = strrchr(filename, PATHSEPCHAR);
-		t = (t == NULL) ? filename : (t + 1);
+		t = (t == nullptr) ? filename : (t + 1);
 	}
 	strecpy(fios->title, t, lastof(fios->title));
 	str_validate(fios->title, lastof(fios->title));
@@ -342,7 +340,7 @@ static void FiosGetFileList(SaveLoadOperation fop, fios_getlist_callback_proc *c
 	struct dirent *dirent;
 	DIR *dir;
 	FiosItem *fios;
-	int sort_start;
+	size_t sort_start;
 	char d_name[sizeof(fios->name)];
 
 	file_list.Clear();
@@ -357,8 +355,8 @@ static void FiosGetFileList(SaveLoadOperation fop, fios_getlist_callback_proc *c
 	}
 
 	/* Show subdirectories */
-	if ((dir = ttd_opendir(_fios_path)) != NULL) {
-		while ((dirent = readdir(dir)) != NULL) {
+	if ((dir = ttd_opendir(_fios_path)) != nullptr) {
+		while ((dirent = readdir(dir)) != nullptr) {
 			strecpy(d_name, FS2OTTD(dirent->d_name), lastof(d_name));
 
 			/* found file must be directory, but not '.' or '..' */
@@ -380,7 +378,7 @@ static void FiosGetFileList(SaveLoadOperation fop, fios_getlist_callback_proc *c
 	{
 		SortingBits order = _savegame_sort_order;
 		_savegame_sort_order = SORT_BY_NAME | SORT_ASCENDING;
-		QSortT(file_list.files.data(), file_list.files.size(), CompareFiosItems);
+		std::sort(file_list.files.begin(), file_list.files.end());
 		_savegame_sort_order = order;
 	}
 
@@ -390,12 +388,12 @@ static void FiosGetFileList(SaveLoadOperation fop, fios_getlist_callback_proc *c
 	/* Show files */
 	FiosFileScanner scanner(fop, callback_proc, file_list);
 	if (subdir == NO_DIRECTORY) {
-		scanner.Scan(NULL, _fios_path, false);
+		scanner.Scan(nullptr, _fios_path, false);
 	} else {
-		scanner.Scan(NULL, subdir, true, true);
+		scanner.Scan(nullptr, subdir, true, true);
 	}
 
-	QSortT(file_list.Get(sort_start), file_list.Length() - sort_start, CompareFiosItems);
+	std::sort(file_list.files.begin() + sort_start, file_list.files.end());
 
 	/* Show drives */
 	FiosGetDrives(file_list);
@@ -418,7 +416,7 @@ static void GetFileTitle(const char *file, char *title, const char *last, Subdir
 	strecat(buf, ".title", lastof(buf));
 
 	FILE *f = FioFOpenFile(buf, "r", subdir);
-	if (f == NULL) return;
+	if (f == nullptr) return;
 
 	size_t read = fread(title, 1, last - title, f);
 	assert(title + read <= last);
@@ -432,8 +430,8 @@ static void GetFileTitle(const char *file, char *title, const char *last, Subdir
  * @param fop Purpose of collecting the list.
  * @param file Name of the file to check.
  * @param ext A pointer to the extension identifier inside file
- * @param title Buffer if a callback wants to lookup the title of the file; NULL to skip the lookup
- * @param last Last available byte in buffer (to prevent buffer overflows); not used when title == NULL
+ * @param title Buffer if a callback wants to lookup the title of the file; nullptr to skip the lookup
+ * @param last Last available byte in buffer (to prevent buffer overflows); not used when title == nullptr
  * @return a FIOS_TYPE_* type of the found file, FIOS_TYPE_INVALID if not a savegame
  * @see FiosGetFileList
  * @see FiosGetSavegameList
@@ -447,7 +445,7 @@ FiosType FiosGetSavegameListCallback(SaveLoadOperation fop, const char *file, co
 	 * .SV2 Transport Tycoon Deluxe (Patch) saved 2-player game */
 
 	/* Don't crash if we supply no extension */
-	if (ext == NULL) return FIOS_TYPE_INVALID;
+	if (ext == nullptr) return FIOS_TYPE_INVALID;
 
 	if (strcasecmp(ext, ".sav") == 0) {
 		GetFileTitle(file, title, last, SAVE_DIR);
@@ -457,7 +455,7 @@ FiosType FiosGetSavegameListCallback(SaveLoadOperation fop, const char *file, co
 	if (fop == SLO_LOAD) {
 		if (strcasecmp(ext, ".ss1") == 0 || strcasecmp(ext, ".sv1") == 0 ||
 				strcasecmp(ext, ".sv2") == 0) {
-			if (title != NULL) GetOldSaveGameName(file, title, last);
+			if (title != nullptr) GetOldSaveGameName(file, title, last);
 			return FIOS_TYPE_OLDFILE;
 		}
 	}
@@ -473,10 +471,10 @@ FiosType FiosGetSavegameListCallback(SaveLoadOperation fop, const char *file, co
  */
 void FiosGetSavegameList(SaveLoadOperation fop, FileList &file_list)
 {
-	static char *fios_save_path = NULL;
-	static char *fios_save_path_last = NULL;
+	static char *fios_save_path = nullptr;
+	static char *fios_save_path_last = nullptr;
 
-	if (fios_save_path == NULL) {
+	if (fios_save_path == nullptr) {
 		fios_save_path = MallocT<char>(MAX_PATH);
 		fios_save_path_last = fios_save_path + MAX_PATH - 1;
 		FioGetDirectory(fios_save_path, fios_save_path_last, SAVE_DIR);
@@ -528,11 +526,11 @@ static FiosType FiosGetScenarioListCallback(SaveLoadOperation fop, const char *f
  */
 void FiosGetScenarioList(SaveLoadOperation fop, FileList &file_list)
 {
-	static char *fios_scn_path = NULL;
-	static char *fios_scn_path_last = NULL;
+	static char *fios_scn_path = nullptr;
+	static char *fios_scn_path_last = nullptr;
 
 	/* Copy the default path on first run or on 'New Game' */
-	if (fios_scn_path == NULL) {
+	if (fios_scn_path == nullptr) {
 		fios_scn_path = MallocT<char>(MAX_PATH);
 		fios_scn_path_last = fios_scn_path + MAX_PATH - 1;
 		FioGetDirectory(fios_scn_path, fios_scn_path_last, SCENARIO_DIR);
@@ -599,10 +597,10 @@ static FiosType FiosGetHeightmapListCallback(SaveLoadOperation fop, const char *
  */
 void FiosGetHeightmapList(SaveLoadOperation fop, FileList &file_list)
 {
-	static char *fios_hmap_path = NULL;
-	static char *fios_hmap_path_last = NULL;
+	static char *fios_hmap_path = nullptr;
+	static char *fios_hmap_path_last = nullptr;
 
-	if (fios_hmap_path == NULL) {
+	if (fios_hmap_path == nullptr) {
 		fios_hmap_path = MallocT<char>(MAX_PATH);
 		fios_hmap_path_last = fios_hmap_path + MAX_PATH - 1;
 		FioGetDirectory(fios_hmap_path, fios_hmap_path_last, HEIGHTMAP_DIR);
@@ -624,9 +622,9 @@ void FiosGetHeightmapList(SaveLoadOperation fop, FileList &file_list)
  */
 const char *FiosGetScreenshotDir()
 {
-	static char *fios_screenshot_path = NULL;
+	static char *fios_screenshot_path = nullptr;
 
-	if (fios_screenshot_path == NULL) {
+	if (fios_screenshot_path == nullptr) {
 		fios_screenshot_path = MallocT<char>(MAX_PATH);
 		FioGetDirectory(fios_screenshot_path, fios_screenshot_path + MAX_PATH - 1, SCREENSHOT_DIR);
 	}
@@ -676,7 +674,7 @@ public:
 	bool AddFile(const char *filename, size_t basepath_length, const char *tar_filename) override
 	{
 		FILE *f = FioFOpenFile(filename, "r", SCENARIO_DIR);
-		if (f == NULL) return false;
+		if (f == nullptr) return false;
 
 		ScenarioIdentifier id;
 		int fret = fscanf(f, "%i", &id.scenid);
@@ -695,7 +693,7 @@ public:
 		strecpy(basename, filename, lastof(basename));
 		*strrchr(basename, '.') = '\0';
 		f = FioFOpenFile(basename, "rb", SCENARIO_DIR, &size);
-		if (f == NULL) return false;
+		if (f == nullptr) return false;
 
 		/* calculate md5sum */
 		while ((len = fread(buffer, 1, (size > sizeof(buffer)) ? sizeof(buffer) : size, f)) != 0 && size != 0) {
@@ -718,7 +716,7 @@ static ScenarioScanner _scanner;
  * Find a given scenario based on its unique ID.
  * @param ci The content info to compare it to.
  * @param md5sum Whether to look at the md5sum or the id.
- * @return The filename of the file, else \c NULL.
+ * @return The filename of the file, else \c nullptr.
  */
 const char *FindScenario(const ContentInfo *ci, bool md5sum)
 {
@@ -731,7 +729,7 @@ const char *FindScenario(const ContentInfo *ci, bool md5sum)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 /**
@@ -742,7 +740,7 @@ const char *FindScenario(const ContentInfo *ci, bool md5sum)
  */
 bool HasScenario(const ContentInfo *ci, bool md5sum)
 {
-	return (FindScenario(ci, md5sum) != NULL);
+	return (FindScenario(ci, md5sum) != nullptr);
 }
 
 /**

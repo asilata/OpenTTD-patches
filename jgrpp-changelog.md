@@ -2,6 +2,40 @@
 
 * * *
 
+### v0.30.3 (2019-04-12)
+* Fix crashes on Windows/MinGW caused by race condition at thread initialisation due to incorrect template argument deduction.
+
+### v0.30.2 (2019-04-11)
+* Fix crash and/or non-functionality which could occur when using the bootstrap UI to download the base graphics, or when using the content download window.
+* Fix crash which could occur when displaying the origin station of cargo in the station window.
+* Fix crashes related to caching of viewport station sign positions.
+* Fix create group from vehicle list command.
+* Fix rail type conversion of dual track tiles when rail type labels differ at load.
+* Allow diagonal construction of rivers in the scenario editor.
+* Persist the zoning overlay modes in UI setting.
+* Bump trunk base from commit 66c60e52bac69b752f1dd7b7c599577fcbfa17a1 to commit c0836bccefb7fbc6ebc8c5fa28886602067070f8.
+
+### v0.30.1 (2019-04-05)
+* Fix multiplayer desync when using build and refit (regression in v0.30.0).
+* Bump trunk base from commit 24fc25164a7c4efbf78d28ce9a3dbc22d1f45f5f to commit 66c60e52bac69b752f1dd7b7c599577fcbfa17a1.
+
+### v0.30.0 (2019-04-03)
+* Fix crash which could occur when attempting to build a rail station partially off the map.
+* Fix crash which could occur when disaster vehicles were present.
+* Fix mass changing of rail waypoint orders.
+* Fix wrong rail type being used in some circumstances for dual rail type tiles.
+* Fix enabling/disabling timetable automation for a vehicle in some circumstances.
+* Fix viewport hovering and tunnel build viewport length tooltip when hover mode is set to right-click.
+* Fix the show town population in label setting not being followed when also showing the rating.
+* Fix display of restricted programmable signals which use NewGRF graphics.
+* Disallow ordering ordinary road vehicles to tram depots and vice versa.
+* Add UI setting for whether to open the new vehicle GUI when share-cloning.
+* Add company setting for whether to advance order when cloning/copying/sharing (if current depot is in order list).
+* Add client setting for the zoning overlay UI state.
+* Remove town builds bridges over rail setting, feature in trunk.
+* Add Japanese translations by Qwerty Asd.
+* Bump trunk base from commit 690d1dd6a4490821759a6025114e0dc3eb656293 to commit 24fc25164a7c4efbf78d28ce9a3dbc22d1f45f5f.
+
 ### v0.29.3 (2019-02-22)
 * Fix crash which could occur when disaster vehicles which emit effects were present.
 * Fix case where trains were unable to exit signalled bridge/tunnels.

@@ -19,7 +19,7 @@
 #include "../debug.h"
 #include "../os/windows/win32.h"
 #include "../core/mem_func.hpp"
-#include "../thread/thread.h"
+#include "../thread.h"
 #include "../fileio_func.h"
 #include "../base_media_base.h"
 #include "dmusic.h"
@@ -30,6 +30,10 @@
 #include <dmksctrl.h>
 #include <dmusicc.h>
 #include <algorithm>
+#include <mutex>
+#if defined(__MINGW32__)
+#include "../3rdparty/mingw-std-threads/mingw.mutex.h"
+#endif
 
 #include "../safeguards.h"
 
@@ -138,18 +142,18 @@ static struct {
 } _playback;
 
 /** Handle to our worker thread. */
-static ThreadObject *_dmusic_thread = NULL;
+static std::thread _dmusic_thread;
 /** Event to signal the thread that it should look at a state change. */
-static HANDLE _thread_event = NULL;
+static HANDLE _thread_event = nullptr;
 /** Lock access to playback data that is not thread-safe. */
-static ThreadMutex *_thread_mutex = NULL;
+static std::mutex _thread_mutex;
 
 /** The direct music object manages buffers and ports. */
-static IDirectMusic *_music = NULL;
+static IDirectMusic *_music = nullptr;
 /** The port object lets us send MIDI data to the synthesizer. */
-static IDirectMusicPort *_port = NULL;
+static IDirectMusicPort *_port = nullptr;
 /** The buffer object collects the data to sent. */
-static IDirectMusicBuffer *_buffer = NULL;
+static IDirectMusicBuffer *_buffer = nullptr;
 /** List of downloaded DLS instruments. */
 static std::vector<IDirectMusicDownload *> _dls_downloads;
 
@@ -437,7 +441,7 @@ bool DLSFile::LoadFile(const TCHAR *file)
 	DEBUG(driver, 2, "DMusic: Try to load DLS file %s", FS2OTTD(file));
 
 	FILE *f = _tfopen(file, _T("rb"));
-	if (f == NULL) return false;
+	if (f == nullptr) return false;
 
 	FileCloser f_scope(f);
 
@@ -596,7 +600,7 @@ static void TransmitNotesOff(IDirectMusicBuffer *buffer, REFERENCE_TIME block_ti
 	Sleep(Clamp((block_time - cur_time) / MS_TO_REFTIME, 5, 1000));
 }
 
-static void MidiThreadProc(void *)
+static void MidiThreadProc()
 {
 	DEBUG(driver, 2, "DMusic: Entering playback thread");
 
@@ -655,7 +659,7 @@ static void MidiThreadProc(void *)
 				DEBUG(driver, 2, "DMusic thread: Starting playback");
 				{
 					/* New scope to limit the time the mutex is locked. */
-					ThreadMutexLocker lock(_thread_mutex);
+					std::lock_guard<std::mutex> lock(_thread_mutex);
 
 					current_file.MoveFrom(_playback.next_file);
 					std::swap(_playback.next_segment, current_segment);
@@ -878,13 +882,13 @@ static const char *LoadDefaultDLSFile(const char *user_dls)
 	if ((caps.dwFlags & (DMUS_PC_DLS | DMUS_PC_DLS2)) != 0 && (caps.dwFlags & DMUS_PC_GMINHARDWARE) == 0) {
 		DLSFile dls_file;
 
-		if (user_dls == NULL) {
+		if (user_dls == nullptr) {
 			/* Try loading the default GM DLS file stored in the registry. */
 			HKEY hkDM;
 			if (SUCCEEDED(RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Software\\Microsoft\\DirectMusic"), 0, KEY_READ, &hkDM))) {
 				TCHAR dls_path[MAX_PATH];
 				DWORD buf_size = sizeof(dls_path); // Buffer size as to be given in bytes!
-				if (SUCCEEDED(RegQueryValueEx(hkDM, _T("GMFilePath"), NULL, NULL, (LPBYTE)dls_path, &buf_size))) {
+				if (SUCCEEDED(RegQueryValueEx(hkDM, _T("GMFilePath"), nullptr, nullptr, (LPBYTE)dls_path, &buf_size))) {
 					TCHAR expand_path[MAX_PATH * 2];
 					ExpandEnvironmentStrings(dls_path, expand_path, lengthof(expand_path));
 					if (!dls_file.LoadFile(expand_path)) DEBUG(driver, 1, "Failed to load default GM DLS file from registry");
@@ -905,7 +909,7 @@ static const char *LoadDefaultDLSFile(const char *user_dls)
 		}
 
 		/* Get download port and allocate download IDs. */
-		IDirectMusicPortDownload *download_port = NULL;
+		IDirectMusicPortDownload *download_port = nullptr;
 		if (FAILED(_port->QueryInterface(IID_IDirectMusicPortDownload, (LPVOID *)&download_port))) return "Can't get download port";
 
 		DWORD dlid_wave = 0, dlid_inst = 0;
@@ -919,7 +923,7 @@ static const char *LoadDefaultDLSFile(const char *user_dls)
 
 		/* Download wave data. */
 		for (DWORD i = 0; i < dls_file.waves.size(); i++) {
-			IDirectMusicDownload *dl_wave = NULL;
+			IDirectMusicDownload *dl_wave = nullptr;
 			if (FAILED(download_port->AllocateBuffer((DWORD)(sizeof(WAVE_DOWNLOAD) + dwAppend * dls_file.waves[i].fmt.wf.nBlockAlign + dls_file.waves[i].data.size()), &dl_wave))) {
 				download_port->Release();
 				return "Can't allocate wave download buffer";
@@ -983,7 +987,7 @@ static const char *LoadDefaultDLSFile(const char *user_dls)
 			i_size += offsets * sizeof(ULONG);
 
 			/* Allocate download buffer. */
-			IDirectMusicDownload *dl_inst = NULL;
+			IDirectMusicDownload *dl_inst = nullptr;
 			if (FAILED(download_port->AllocateBuffer((DWORD)i_size, &dl_inst))) {
 				download_port->Release();
 				return "Can't allocate instrument download buffer";
@@ -1084,19 +1088,19 @@ static const char *LoadDefaultDLSFile(const char *user_dls)
 		download_port->Release();
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 
 const char *MusicDriver_DMusic::Start(const char * const *parm)
 {
 	/* Initialize COM */
-	if (FAILED(CoInitializeEx(NULL, COINITBASE_MULTITHREADED))) return "COM initialization failed";
+	if (FAILED(CoInitializeEx(nullptr, COINITBASE_MULTITHREADED))) return "COM initialization failed";
 
 	/* Create the DirectMusic object */
 	if (FAILED(CoCreateInstance(
 				CLSID_DirectMusic,
-				NULL,
+				nullptr,
 				CLSCTX_INPROC,
 				IID_IDirectMusic,
 				(LPVOID*)&_music
@@ -1105,7 +1109,7 @@ const char *MusicDriver_DMusic::Start(const char * const *parm)
 	}
 
 	/* Assign sound output device. */
-	if (FAILED(_music->SetDirectSound(NULL, NULL))) return "Can't set DirectSound interface";
+	if (FAILED(_music->SetDirectSound(nullptr, nullptr))) return "Can't set DirectSound interface";
 
 	/* MIDI events need to be send to the synth in time before their playback time
 	 * has come. By default, we try send any events at least 50 ms before playback. */
@@ -1148,7 +1152,7 @@ const char *MusicDriver_DMusic::Start(const char * const *parm)
 	params.dwSize = sizeof(DMUS_PORTPARAMS);
 	params.dwValidParams = DMUS_PORTPARAMS_CHANNELGROUPS;
 	params.dwChannelGroups = 1;
-	if (FAILED(_music->CreatePort(guidPort, &params, &_port, NULL))) return "Failed to create port";
+	if (FAILED(_music->CreatePort(guidPort, &params, &_port, nullptr))) return "Failed to create port";
 	/* Activate port. */
 	if (FAILED(_port->Activate(TRUE))) return "Failed to activate port";
 
@@ -1158,21 +1162,19 @@ const char *MusicDriver_DMusic::Start(const char * const *parm)
 	desc.dwSize = sizeof(DMUS_BUFFERDESC);
 	desc.guidBufferFormat = KSDATAFORMAT_SUBTYPE_DIRECTMUSIC;
 	desc.cbBuffer = 1024;
-	if (FAILED(_music->CreateMusicBuffer(&desc, &_buffer, NULL))) return "Failed to create music buffer";
+	if (FAILED(_music->CreateMusicBuffer(&desc, &_buffer, nullptr))) return "Failed to create music buffer";
 
 	/* On soft-synths (e.g. the default DirectMusic one), we might need to load a wavetable set to get music. */
 	const char *dls = LoadDefaultDLSFile(GetDriverParam(parm, "dls"));
-	if (dls != NULL) return dls;
+	if (dls != nullptr) return dls;
 
 	/* Create playback thread and synchronization primitives. */
-	_thread_event = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if (_thread_event == NULL) return "Can't create thread shutdown event";
-	_thread_mutex = ThreadMutex::New();
-	if (_thread_mutex == NULL) return "Can't create thread mutex";
+	_thread_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+	if (_thread_event == nullptr) return "Can't create thread shutdown event";
 
-	if (!ThreadObject::New(&MidiThreadProc, this, &_dmusic_thread, "ottd:dmusic")) return "Can't create MIDI output thread";
+	if (!StartNewThread(&_dmusic_thread, "ottd:dmusic", &MidiThreadProc)) return "Can't create MIDI output thread";
 
-	return NULL;
+	return nullptr;
 }
 
 
@@ -1184,46 +1186,45 @@ MusicDriver_DMusic::~MusicDriver_DMusic()
 
 void MusicDriver_DMusic::Stop()
 {
-	if (_dmusic_thread != NULL) {
+	if (_dmusic_thread.joinable()) {
 		_playback.shutdown = true;
 		SetEvent(_thread_event);
-		_dmusic_thread->Join();
+		_dmusic_thread.join();
 	}
 
 	/* Unloaded any instruments we loaded. */
 	if (_dls_downloads.size() > 0) {
-		IDirectMusicPortDownload *download_port = NULL;
+		IDirectMusicPortDownload *download_port = nullptr;
 		_port->QueryInterface(IID_IDirectMusicPortDownload, (LPVOID *)&download_port);
 
 		/* Instruments refer to waves. As the waves are at the beginning of the download list,
 		 * do the unload from the back so that references are cleared properly. */
-		for (std::vector<IDirectMusicDownload *>::reverse_iterator i = _dls_downloads.rbegin(); download_port != NULL && i != _dls_downloads.rend(); i++) {
+		for (std::vector<IDirectMusicDownload *>::reverse_iterator i = _dls_downloads.rbegin(); download_port != nullptr && i != _dls_downloads.rend(); i++) {
 			download_port->Unload(*i);
 			(*i)->Release();
 		}
 		_dls_downloads.clear();
 
-		if (download_port != NULL) download_port->Release();
+		if (download_port != nullptr) download_port->Release();
 	}
 
-	if (_buffer != NULL) {
+	if (_buffer != nullptr) {
 		_buffer->Release();
-		_buffer = NULL;
+		_buffer = nullptr;
 	}
 
-	if (_port != NULL) {
+	if (_port != nullptr) {
 		_port->Activate(FALSE);
 		_port->Release();
-		_port = NULL;
+		_port = nullptr;
 	}
 
-	if (_music != NULL) {
+	if (_music != nullptr) {
 		_music->Release();
-		_music = NULL;
+		_music = nullptr;
 	}
 
 	CloseHandle(_thread_event);
-	delete _thread_mutex;
 
 	CoUninitialize();
 }
@@ -1231,7 +1232,7 @@ void MusicDriver_DMusic::Stop()
 
 void MusicDriver_DMusic::PlaySong(const MusicSongInfo &song)
 {
-	ThreadMutexLocker lock(_thread_mutex);
+	std::lock_guard<std::mutex> lock(_thread_mutex);
 
 	if (!_playback.next_file.LoadSong(song)) return;
 

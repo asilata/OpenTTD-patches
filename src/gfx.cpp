@@ -21,6 +21,7 @@
 #include "network/network_func.h"
 #include "window_func.h"
 #include "newgrf_debug.h"
+#include "thread.h"
 
 #include "table/palettes.h"
 #include "table/string_colours.h"
@@ -52,8 +53,8 @@ static byte _stringwidth_table[FS_END][224]; ///< Cache containing width of ofte
 DrawPixelInfo *_cur_dpi;
 byte _colour_gradient[COLOUR_END][8];
 
-static void GfxMainBlitterViewport(const Sprite *sprite, int x, int y, BlitterMode mode, const SubSprite *sub = NULL, SpriteID sprite_id = SPR_CURSOR_MOUSE);
-static void GfxMainBlitter(const Sprite *sprite, int x, int y, BlitterMode mode, const SubSprite *sub = NULL, SpriteID sprite_id = SPR_CURSOR_MOUSE, ZoomLevel zoom = ZOOM_LVL_NORMAL);
+static void GfxMainBlitterViewport(const Sprite *sprite, int x, int y, BlitterMode mode, const SubSprite *sub = nullptr, SpriteID sprite_id = SPR_CURSOR_MOUSE);
+static void GfxMainBlitter(const Sprite *sprite, int x, int y, BlitterMode mode, const SubSprite *sub = nullptr, SpriteID sprite_id = SPR_CURSOR_MOUSE, ZoomLevel zoom = ZOOM_LVL_NORMAL);
 
 static ReusableBuffer<uint8> _cursor_backup;
 
@@ -75,7 +76,7 @@ static const uint DIRTY_BLOCK_HEIGHT   = 8;
 static const uint DIRTY_BLOCK_WIDTH    = 64;
 
 static uint _dirty_bytes_per_line = 0;
-static byte *_dirty_blocks = NULL;
+static byte *_dirty_blocks = nullptr;
 extern uint _dirty_block_colour;
 
 void GfxScroll(int left, int top, int width, int height, int xo, int yo)
@@ -339,12 +340,12 @@ static void SetColourRemap(TextColour colour)
  * @return In case of left or center alignment the right most pixel we have drawn to.
  *         In case of right alignment the left most pixel we have drawn to.
  */
-static int DrawLayoutLine(const ParagraphLayouter::Line *line, int y, int left, int right, StringAlignment align, bool underline, bool truncation)
+static int DrawLayoutLine(const ParagraphLayouter::Line &line, int y, int left, int right, StringAlignment align, bool underline, bool truncation)
 {
-	if (line->CountRuns() == 0) return 0;
+	if (line.CountRuns() == 0) return 0;
 
-	int w = line->GetWidth();
-	int h = line->GetLeading();
+	int w = line.GetWidth();
+	int h = line.GetLeading();
 
 	/*
 	 * The following is needed for truncation.
@@ -366,7 +367,7 @@ static int DrawLayoutLine(const ParagraphLayouter::Line *line, int y, int left, 
 
 	truncation &= max_w < w;         // Whether we need to do truncation.
 	int dot_width = 0;               // Cache for the width of the dot.
-	const Sprite *dot_sprite = NULL; // Cache for the sprite of the dot.
+	const Sprite *dot_sprite = nullptr; // Cache for the sprite of the dot.
 
 	if (truncation) {
 		/*
@@ -375,7 +376,7 @@ static int DrawLayoutLine(const ParagraphLayouter::Line *line, int y, int left, 
 		 * another size would be chosen it won't have truncated too little for
 		 * the truncation dots.
 		 */
-		FontCache *fc = ((const Font*)line->GetVisualRun(0)->GetFont())->fc;
+		FontCache *fc = ((const Font*)line.GetVisualRun(0).GetFont())->fc;
 		GlyphID dot_glyph = fc->MapCharToGlyph('.');
 		dot_width = fc->GetGlyphWidth(dot_glyph);
 		dot_sprite = fc->GetGlyph(dot_glyph);
@@ -420,9 +421,9 @@ static int DrawLayoutLine(const ParagraphLayouter::Line *line, int y, int left, 
 
 	TextColour colour = TC_BLACK;
 	bool draw_shadow = false;
-	for (int run_index = 0; run_index < line->CountRuns(); run_index++) {
-		const ParagraphLayouter::VisualRun *run = line->GetVisualRun(run_index);
-		const Font *f = (const Font*)run->GetFont();
+	for (int run_index = 0; run_index < line.CountRuns(); run_index++) {
+		const ParagraphLayouter::VisualRun &run = line.GetVisualRun(run_index);
+		const Font *f = (const Font*)run.GetFont();
 
 		FontCache *fc = f->fc;
 		colour = f->colour;
@@ -434,15 +435,15 @@ static int DrawLayoutLine(const ParagraphLayouter::Line *line, int y, int left, 
 
 		draw_shadow = fc->GetDrawGlyphShadow() && (colour & TC_NO_SHADE) == 0 && colour != TC_BLACK;
 
-		for (int i = 0; i < run->GetGlyphCount(); i++) {
-			GlyphID glyph = run->GetGlyphs()[i];
+		for (int i = 0; i < run.GetGlyphCount(); i++) {
+			GlyphID glyph = run.GetGlyphs()[i];
 
 			/* Not a valid glyph (empty) */
 			if (glyph == 0xFFFF) continue;
 
-			int begin_x = (int)run->GetPositions()[i * 2]     + left - offset_x;
-			int end_x   = (int)run->GetPositions()[i * 2 + 2] + left - offset_x  - 1;
-			int top     = (int)run->GetPositions()[i * 2 + 1] + y;
+			int begin_x = (int)run.GetPositions()[i * 2]     + left - offset_x;
+			int end_x   = (int)run.GetPositions()[i * 2 + 2] + left - offset_x  - 1;
+			int top     = (int)run.GetPositions()[i * 2 + 1] + y;
 
 			/* Truncated away. */
 			if (truncation && (begin_x < min_x || end_x > max_x)) continue;
@@ -511,7 +512,7 @@ int DrawString(int left, int right, int top, const char *str, TextColour colour,
 	Layouter layout(str, INT32_MAX, colour, fontsize);
 	if (layout.size() == 0) return 0;
 
-	return DrawLayoutLine(layout.front(), top, left, right, align, underline, true);
+	return DrawLayoutLine(*layout.front(), top, left, right, align, underline, true);
 }
 
 /**
@@ -574,7 +575,7 @@ int GetStringLineCount(StringID str, int maxw)
 	GetString(buffer, str, lastof(buffer));
 
 	Layouter layout(buffer, maxw);
-	return layout.size();
+	return (uint)layout.size();
 }
 
 /**
@@ -647,14 +648,14 @@ int DrawStringMultiLine(int left, int right, int top, int bottom, const char *st
 	int last_line = top;
 	int first_line = bottom;
 
-	for (const ParagraphLayouter::Line *line : layout) {
+	for (const auto &line : layout) {
 
 		int line_height = line->GetLeading();
 		if (y >= top && y < bottom) {
 			last_line = y + line_height;
 			if (first_line > y) first_line = y;
 
-			DrawLayoutLine(line, y, left, right, align, underline, false);
+			DrawLayoutLine(*line, y, left, right, align, underline, false);
 		}
 		y += line_height;
 	}
@@ -733,11 +734,11 @@ Point GetCharPosInString(const char *str, const char *ch, FontSize start_fontsiz
  * @param str String to test.
  * @param x Position relative to the start of the string.
  * @param start_fontsize Font size to start the text with.
- * @return Pointer to the character at the position or NULL if there is no character at the position.
+ * @return Pointer to the character at the position or nullptr if there is no character at the position.
  */
 const char *GetCharAtPosition(const char *str, int x, FontSize start_fontsize)
 {
-	if (x < 0) return NULL;
+	if (x < 0) return nullptr;
 
 	Layouter layout(str, INT32_MAX, TC_FROMSTRING, start_fontsize);
 	return layout.GetCharAtPosition(x);
@@ -767,7 +768,7 @@ Dimension GetSpriteSize(SpriteID sprid, Point *offset, ZoomLevel zoom)
 {
 	const Sprite *sprite = GetSprite(sprid, ST_NORMAL);
 
-	if (offset != NULL) {
+	if (offset != nullptr) {
 		offset->x = UnScaleByZoom(sprite->x_offs, zoom);
 		offset->y = UnScaleByZoom(sprite->y_offs, zoom);
 	}
@@ -873,7 +874,7 @@ static void GfxBlitter(const Sprite * const sprite, int x, int y, BlitterMode mo
 	x += sprite->x_offs;
 	y += sprite->y_offs;
 
-	if (sub == NULL) {
+	if (sub == nullptr) {
 		/* No clipping. */
 		bp.skip_left = 0;
 		bp.skip_top = 0;
@@ -1010,7 +1011,7 @@ void DoPaletteAnimations()
 	uint i;
 	uint j;
 
-	if (blitter != NULL && blitter->UsePaletteAnimation() == Blitter::PALETTE_ANIMATION_NONE) {
+	if (blitter != nullptr && blitter->UsePaletteAnimation() == Blitter::PALETTE_ANIMATION_NONE) {
 		palette_animation_counter = 0;
 	}
 
@@ -1095,7 +1096,7 @@ void DoPaletteAnimations()
 		if (j >= EPV_CYCLES_GLITTER_WATER) j -= EPV_CYCLES_GLITTER_WATER;
 	}
 
-	if (blitter != NULL && blitter->UsePaletteAnimation() == Blitter::PALETTE_ANIMATION_NONE) {
+	if (blitter != nullptr && blitter->UsePaletteAnimation() == Blitter::PALETTE_ANIMATION_NONE) {
 		palette_animation_counter = old_tc;
 	} else {
 		if (memcmp(old_val, &_cur_palette.palette[PALETTE_ANIM_START], sizeof(old_val)) != 0 && _cur_palette.count_dirty == 0) {
@@ -1205,7 +1206,7 @@ void ScreenSizeChanged()
 void UndrawMouseCursor()
 {
 	/* Don't undraw the mouse cursor if the screen is not ready */
-	if (_screen.dst_ptr == NULL) return;
+	if (_screen.dst_ptr == nullptr) return;
 
 	if (_cursor.visible) {
 		Blitter *blitter = BlitterFactory::GetCurrentBlitter();
@@ -1218,7 +1219,7 @@ void UndrawMouseCursor()
 void DrawMouseCursor()
 {
 	/* Don't draw the mouse cursor if the screen is not ready */
-	if (_screen.dst_ptr == NULL) return;
+	if (_screen.dst_ptr == nullptr) return;
 
 	Blitter *blitter = BlitterFactory::GetCurrentBlitter();
 
@@ -1311,8 +1312,8 @@ void DrawDirtyBlocks()
 	if (HasModalProgress()) {
 		/* We are generating the world, so release our rights to the map and
 		 * painting while we are waiting a bit. */
-		_modal_progress_paint_mutex->EndCritical();
-		_modal_progress_work_mutex->EndCritical();
+		_modal_progress_paint_mutex.unlock();
+		_modal_progress_work_mutex.unlock();
 
 		/* Wait a while and update _realtime_tick so we are given the rights */
 		if (!IsFirstModalProgressLoop()) CSleep(MODAL_PROGRESS_REDRAW_TIMEOUT);
@@ -1320,9 +1321,9 @@ void DrawDirtyBlocks()
 
 		/* Modal progress thread may need blitter access while we are waiting for it. */
 		VideoDriver::GetInstance()->ReleaseBlitterLock();
-		_modal_progress_paint_mutex->BeginCritical();
+		_modal_progress_paint_mutex.lock();
 		VideoDriver::GetInstance()->AcquireBlitterLock();
-		_modal_progress_work_mutex->BeginCritical();
+		_modal_progress_work_mutex.lock();
 
 		/* When we ended with the modal progress, do not draw the blocks.
 		 * Simply let the next run do so, otherwise we would be loading
@@ -1580,7 +1581,7 @@ static void SwitchAnimatedCursor()
 {
 	const AnimCursor *cur = _cursor.animate_cur;
 
-	if (cur == NULL || cur->sprite == AnimCursor::LAST) cur = _cursor.animate_list;
+	if (cur == nullptr || cur->sprite == AnimCursor::LAST) cur = _cursor.animate_list;
 
 	SetCursorSprite(cur->sprite, _cursor.sprite_seq[0].pal);
 
@@ -1630,7 +1631,7 @@ void SetMouseCursor(CursorID sprite, PaletteID pal)
 void SetAnimatedMouseCursor(const AnimCursor *table)
 {
 	_cursor.animate_list = table;
-	_cursor.animate_cur = NULL;
+	_cursor.animate_cur = nullptr;
 	_cursor.sprite_seq[0].pal = PAL_NONE;
 	SwitchAnimatedCursor();
 }
@@ -1693,20 +1694,13 @@ bool ChangeResInGame(int width, int height)
 bool ToggleFullScreen(bool fs)
 {
 	bool result = VideoDriver::GetInstance()->ToggleFullscreen(fs);
-	if (_fullscreen != fs && _num_resolutions == 0) {
+	if (_fullscreen != fs && _resolutions.empty()) {
 		DEBUG(driver, 0, "Could not find a suitable fullscreen resolution");
 	}
 	return result;
 }
 
-static int CDECL compare_res(const Dimension *pa, const Dimension *pb)
+void SortResolutions()
 {
-	int x = pa->width - pb->width;
-	if (x != 0) return x;
-	return pa->height - pb->height;
-}
-
-void SortResolutions(int count)
-{
-	QSortT(_resolutions, count, &compare_res);
+	std::sort(_resolutions.begin(), _resolutions.end());
 }

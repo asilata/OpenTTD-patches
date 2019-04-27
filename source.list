@@ -483,7 +483,6 @@ core/smallmap_type.hpp
 core/smallmatrix_type.hpp
 core/smallstack_type.hpp
 core/smallvec_type.hpp
-core/sort_func.hpp
 core/string_compare_type.hpp
 
 # GUI Source Code
@@ -1229,20 +1228,7 @@ sound/null_s.cpp
 #end
 
 # Threading
-thread/thread.h
-#if USE_THREADS
-	#if WIN32
-		thread/thread_win32.cpp
-	#else
-		#if OS2
-			thread/thread_os2.cpp
-		#else
-			thread/thread_pthread.cpp
-		#end
-	#end
-#else
-	thread/thread_none.cpp
-#end
+thread.h
 
 tracerestrict.h
 tracerestrict.cpp
@@ -1260,3 +1246,11 @@ scope_info.h
 3rdparty/cpp-btree/safe_btree.h
 3rdparty/cpp-btree/safe_btree_map.h
 3rdparty/cpp-btree/safe_btree_set.h
+
+# MinGW threading
+#if MINGW
+	3rdparty/mingw-std-threads/mingw.condition_variable.h
+	3rdparty/mingw-std-threads/mingw.mutex.h
+	3rdparty/mingw-std-threads/mingw.shared_mutex.h
+	3rdparty/mingw-std-threads/mingw.thread.h
+#end

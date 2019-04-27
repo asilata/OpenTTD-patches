@@ -69,21 +69,21 @@ struct SetDateWindow : Window {
 	virtual void ShowDateDropDown(int widget)
 	{
 		int selected;
-		DropDownList *list = new DropDownList();
+		DropDownList list;
 
 		switch (widget) {
 			default: NOT_REACHED();
 
 			case WID_SD_DAY:
 				for (uint i = 0; i < 31; i++) {
-					list->push_back(new DropDownListStringItem(STR_DAY_NUMBER_1ST + i, i + 1, false));
+					list.emplace_back(new DropDownListStringItem(STR_DAY_NUMBER_1ST + i, i + 1, false));
 				}
 				selected = this->date.day;
 				break;
 
 			case WID_SD_MONTH:
 				for (uint i = 0; i < 12; i++) {
-					list->push_back(new DropDownListStringItem(STR_MONTH_JAN + i, i, false));
+					list.emplace_back(new DropDownListStringItem(STR_MONTH_JAN + i, i, false));
 				}
 				selected = this->date.month;
 				break;
@@ -92,13 +92,13 @@ struct SetDateWindow : Window {
 				for (Year i = this->min_year; i <= this->max_year; i++) {
 					DropDownListParamStringItem *item = new DropDownListParamStringItem(STR_JUST_INT, i, false);
 					item->SetParam(0, i);
-					list->push_back(item);
+					list.emplace_back(item);
 				}
 				selected = this->date.year;
 				break;
 		}
 
-		ShowDropDownList(this, list, selected, widget);
+		ShowDropDownList(this, std::move(list), selected, widget);
 	}
 
 	void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize) override
@@ -148,7 +148,7 @@ struct SetDateWindow : Window {
 				ShowDateDropDown(widget);
 				break;
 			case WID_SD_SET_DATE:
-				if (this->callback != NULL) {
+				if (this->callback != nullptr) {
 					this->callback(this, ConvertYMDToDate(this->date.year, this->date.month, this->date.day)
 							* DAY_TICKS * _settings_game.economy.day_length_factor);
 				}
@@ -194,7 +194,7 @@ struct SetMinutesWindow : SetDateWindow
 	virtual void ShowDateDropDown(int widget)
 	{
 		int selected;
-		DropDownList *list = new DropDownList();
+		DropDownList list;
 
 		switch (widget) {
 			default: NOT_REACHED();
@@ -203,7 +203,7 @@ struct SetMinutesWindow : SetDateWindow
 				for (uint i = 0; i < 60; i++) {
 					DropDownListParamStringItem *item = new DropDownListParamStringItem(STR_JUST_INT, i, false);
 					item->SetParam(0, i);
-					list->push_back(item);
+					list.emplace_back(item);
 				}
 				selected = MINUTES_MINUTE(minutes);
 				break;
@@ -212,14 +212,14 @@ struct SetMinutesWindow : SetDateWindow
 				for (uint i = 0; i < 24; i++) {
 					DropDownListParamStringItem *item = new DropDownListParamStringItem(STR_JUST_INT, i, false);
 					item->SetParam(0, i);
-					list->push_back(item);
+					list.emplace_back(item);
 				}
 				selected = MINUTES_HOUR(minutes);
 
 				break;
 		}
 
-		ShowDropDownList(this, list, selected, widget);
+		ShowDropDownList(this, std::move(list), selected, widget);
 	}
 
 	virtual void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize)
@@ -266,7 +266,7 @@ struct SetMinutesWindow : SetDateWindow
 				break;
 
 			case WID_SD_SET_DATE:
-				if (this->callback != NULL) {
+				if (this->callback != nullptr) {
 					this->callback(this, ((DateTicks)minutes - _settings_client.gui.clock_offset) * _settings_client.gui.ticks_per_minute);
 				}
 				delete this;
@@ -338,14 +338,14 @@ static const NWidgetPart _nested_set_minutes_widgets[] = {
 
 /** Description of the date setting window. */
 static WindowDesc _set_date_desc(
-	WDP_CENTER, NULL, 0, 0,
+	WDP_CENTER, nullptr, 0, 0,
 	WC_SET_DATE, WC_NONE,
 	0,
 	_nested_set_date_widgets, lengthof(_nested_set_date_widgets)
 );
 
 static WindowDesc _set_minutes_desc(
-	WDP_CENTER, NULL, 0, 0,
+	WDP_CENTER, nullptr, 0, 0,
 	WC_SET_DATE, WC_NONE,
 	0,
 	_nested_set_minutes_widgets, lengthof(_nested_set_minutes_widgets)

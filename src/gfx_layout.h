@@ -137,12 +137,12 @@ public:
 		virtual int GetLeading() const = 0;
 		virtual int GetWidth() const = 0;
 		virtual int CountRuns() const = 0;
-		virtual const VisualRun *GetVisualRun(int run) const = 0;
+		virtual const VisualRun &GetVisualRun(int run) const = 0;
 		virtual int GetInternalCharLength(WChar c) const = 0;
 	};
 
 	virtual void Reflow() = 0;
-	virtual const Line *NextLine(int max_width) = 0;
+	virtual std::unique_ptr<const Line> NextLine(int max_width) = 0;
 };
 
 /**
@@ -150,7 +150,7 @@ public:
  *
  * It also accounts for the memory allocations and frees.
  */
-class Layouter : public AutoDeleteSmallVector<const ParagraphLayouter::Line *> {
+class Layouter : public std::vector<std::unique_ptr<const ParagraphLayouter::Line>> {
 	const char *string; ///< Pointer to the original string.
 
 	/** Key into the linecache */
@@ -177,7 +177,7 @@ public:
 		FontState state_after;     ///< Font state after the line.
 		ParagraphLayouter *layout; ///< Layout of the line.
 
-		LineCacheItem() : buffer(NULL), layout(NULL) {}
+		LineCacheItem() : buffer(nullptr), layout(nullptr) {}
 		~LineCacheItem() { delete layout; free(buffer); }
 	};
 private:

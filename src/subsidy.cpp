@@ -333,6 +333,7 @@ bool FindSubsidyTownCargoRoute()
 
 	/* Select a random town. */
 	const Town *src_town = Town::GetRandom();
+	if (src_town->cache.population < SUBSIDY_CARGO_MIN_POPULATION) return false;
 
 	CargoTypes town_cargo_produced = src_town->cargo_produced;
 
@@ -376,7 +377,7 @@ bool FindSubsidyIndustryCargoRoute()
 
 	/* Select a random industry. */
 	const Industry *src_ind = Industry::GetRandom();
-	if (src_ind == NULL) return false;
+	if (src_ind == nullptr) return false;
 
 	uint trans, total;
 
@@ -441,7 +442,7 @@ bool FindSubsidyCargoDestination(CargoID cid, SourceType src_type, SourceID src)
 		case ST_INDUSTRY: {
 			/* Select a random industry. */
 			const Industry *dst_ind = Industry::GetRandom();
-			if (dst_ind == NULL) return false;
+			if (dst_ind == nullptr) return false;
 
 			/* The industry must accept the cargo */
 			bool valid = std::find(dst_ind->accepts_cargo, endof(dst_ind->accepts_cargo), cid) != endof(dst_ind->accepts_cargo);

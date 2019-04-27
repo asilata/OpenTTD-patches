@@ -308,14 +308,14 @@ static bool CheckMapSize(bool print_warning = true)
  * Dimension selected in the other dropdown is used to suggest which choices are 'valid'
  * @param other_dimension Dimension specified by the second dropdown.
  */
-static DropDownList *BuildMapsizeDropDown(int other_dimension)
+static DropDownList BuildMapsizeDropDown(int other_dimension)
 {
-	DropDownList *list = new DropDownList();
+	DropDownList list;
 
 	for (uint i = MIN_MAP_SIZE_BITS; i <= MAX_MAP_SIZE_BITS; i++) {
 		DropDownListParamStringItem *item = new DropDownListParamStringItem((i + other_dimension > MAX_MAP_TILES_BITS) ? STR_RED_INT : STR_JUST_INT, i, false);
 		item->SetParam(0, 1LL << i);
-		list->push_back(item);
+		list.emplace_back(item);
 	}
 
 	return list;
@@ -478,7 +478,7 @@ struct GenerateLandscapeWindow : public Window {
 
 	void UpdateWidgetSize(int widget, Dimension *size, const Dimension &padding, Dimension *fill, Dimension *resize) override
 	{
-		const StringID *strs = NULL;
+		const StringID *strs = nullptr;
 		switch (widget) {
 			case WID_GL_MAX_HEIGHTLEVEL_TEXT:
 				SetDParam(0, MAX_TILE_HEIGHT);
@@ -545,7 +545,7 @@ struct GenerateLandscapeWindow : public Window {
 			default:
 				return;
 		}
-		if (strs != NULL) {
+		if (strs != nullptr) {
 			while (*strs != INVALID_STRING_ID) {
 				*size = maxdim(*size, GetStringBoundingBox(*strs++));
 			}
@@ -804,7 +804,7 @@ struct GenerateLandscapeWindow : public Window {
 	void OnQueryTextFinished(char *str) override
 	{
 		/* Was 'cancel' pressed? */
-		if (str == NULL) return;
+		if (str == nullptr) return;
 
 		int32 value;
 		if (!StrEmpty(str)) {
@@ -851,14 +851,14 @@ struct GenerateLandscapeWindow : public Window {
 };
 
 static WindowDesc _generate_landscape_desc(
-	WDP_CENTER, NULL, 0, 0,
+	WDP_CENTER, nullptr, 0, 0,
 	WC_GENERATE_LANDSCAPE, WC_NONE,
 	0,
 	_nested_generate_landscape_widgets, lengthof(_nested_generate_landscape_widgets)
 );
 
 static WindowDesc _heightmap_load_desc(
-	WDP_CENTER, NULL, 0, 0,
+	WDP_CENTER, nullptr, 0, 0,
 	WC_GENERATE_LANDSCAPE, WC_NONE,
 	0,
 	_nested_heightmap_load_widgets, lengthof(_nested_heightmap_load_widgets)
@@ -1166,7 +1166,7 @@ static const NWidgetPart _nested_create_scenario_widgets[] = {
 };
 
 static WindowDesc _create_scenario_desc(
-	WDP_CENTER, NULL, 0, 0,
+	WDP_CENTER, nullptr, 0, 0,
 	WC_GENERATE_LANDSCAPE, WC_NONE,
 	0,
 	_nested_create_scenario_widgets, lengthof(_nested_create_scenario_widgets)
@@ -1194,7 +1194,7 @@ static const NWidgetPart _nested_generate_progress_widgets[] = {
 
 
 static WindowDesc _generate_progress_desc(
-	WDP_CENTER, NULL, 0, 0,
+	WDP_CENTER, nullptr, 0, 0,
 	WC_MODAL_PROGRESS, WC_NONE,
 	0,
 	_nested_generate_progress_widgets, lengthof(_nested_generate_progress_widgets)
@@ -1377,10 +1377,10 @@ static void _SetGeneratingWorldProgress(GenWorldProgress cls, uint progress, uin
 	 * paint thread. The 'other' thread already has the paint thread rights so
 	 * this ensures us that we are waiting until the paint thread is done
 	 * before we reacquire the mapgen rights */
-	_modal_progress_work_mutex->EndCritical();
-	_modal_progress_paint_mutex->BeginCritical();
-	_modal_progress_work_mutex->BeginCritical();
-	_modal_progress_paint_mutex->EndCritical();
+	_modal_progress_work_mutex.unlock();
+	_modal_progress_paint_mutex.lock();
+	_modal_progress_work_mutex.lock();
+	_modal_progress_paint_mutex.unlock();
 
 	_gws.timer = _realtime_tick;
 }

@@ -32,11 +32,9 @@
 
 void DrawEngineList(VehicleType type, int x, int r, int y, const GUIEngineList *eng_list, uint16 min, uint16 max, EngineID selected_id, bool show_count, GroupID selected_group);
 
-static int CDECL EngineNumberSorter(const EngineID *a, const EngineID *b)
+static bool EngineNumberSorter(const EngineID &a, const EngineID &b)
 {
-	int r = Engine::Get(*a)->list_position - Engine::Get(*b)->list_position;
-
-	return r;
+	return Engine::Get(a)->list_position < Engine::Get(b)->list_position;
 }
 
 /**
@@ -160,7 +158,7 @@ class ReplaceVehicleWindow : public Window {
 		if (this->engines[0].NeedRebuild()) {
 			/* We need to rebuild the left engines list */
 			this->GenerateReplaceVehList(true);
-			this->vscroll[0]->SetCount(this->engines[0].size());
+			this->vscroll[0]->SetCount((uint)this->engines[0].size());
 			if (this->reset_sel_engine && this->sel_engine[0] == INVALID_ENGINE && this->engines[0].size() != 0) {
 				this->sel_engine[0] = this->engines[0][0];
 			}
@@ -180,7 +178,7 @@ class ReplaceVehicleWindow : public Window {
 				}
 				/* Regenerate the list on the right. Note: This resets sel_engine[1] to INVALID_ENGINE, if it is no longer available. */
 				this->GenerateReplaceVehList(false);
-				this->vscroll[1]->SetCount(this->engines[1].size());
+				this->vscroll[1]->SetCount((uint)this->engines[1].size());
 				if (this->reset_sel_engine && this->sel_engine[1] != INVALID_ENGINE) {
 					int position = 0;
 					for (EngineID &eid : this->engines[1]) {
@@ -384,7 +382,7 @@ public:
 			case WID_RV_RIGHT_MATRIX: {
 				int side = (widget == WID_RV_LEFT_MATRIX) ? 0 : 1;
 				EngineID start  = this->vscroll[side]->GetPosition(); // what is the offset for the start (scrolling)
-				EngineID end    = min(this->vscroll[side]->GetCapacity() + start, this->engines[side].size());
+				EngineID end    = min(this->vscroll[side]->GetCapacity() + start, (uint)this->engines[side].size());
 
 				/* Do the actual drawing */
 				DrawEngineList((VehicleType)this->window_number, r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, r.top + WD_FRAMERECT_TOP,
@@ -467,10 +465,10 @@ public:
 				break;
 
 			case WID_RV_TRAIN_ENGINEWAGON_DROPDOWN: {
-				DropDownList *list = new DropDownList();
-				list->push_back(new DropDownListStringItem(STR_REPLACE_ENGINES, 1, false));
-				list->push_back(new DropDownListStringItem(STR_REPLACE_WAGONS, 0, false));
-				ShowDropDownList(this, list, this->replace_engines ? 1 : 0, WID_RV_TRAIN_ENGINEWAGON_DROPDOWN);
+				DropDownList list;
+				list.emplace_back(new DropDownListStringItem(STR_REPLACE_ENGINES, 1, false));
+				list.emplace_back(new DropDownListStringItem(STR_REPLACE_WAGONS, 0, false));
+				ShowDropDownList(this, std::move(list), this->replace_engines ? 1 : 0, WID_RV_TRAIN_ENGINEWAGON_DROPDOWN);
 				break;
 			}
 

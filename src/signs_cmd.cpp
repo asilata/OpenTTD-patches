@@ -59,7 +59,7 @@ CommandCost CmdPlaceSign(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 
 			si->name = stredup(text);
 		}
 		si->UpdateVirtCoord();
-		_viewport_sign_kdtree.Insert(ViewportSignKdtreeItem::MakeSign(si->index));
+		if (_viewport_sign_kdtree_valid) _viewport_sign_kdtree.Insert(ViewportSignKdtreeItem::MakeSign(si->index));
 		InvalidateWindowData(WC_SIGN_LIST, 0, 0);
 		_new_sign_id = si->index;
 	}
@@ -81,7 +81,7 @@ CommandCost CmdPlaceSign(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 
 CommandCost CmdRenameSign(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32 p2, const char *text)
 {
 	Sign *si = Sign::GetIfValid(p1);
-	if (si == NULL) return CMD_ERROR;
+	if (si == nullptr) return CMD_ERROR;
 	if (si->owner == OWNER_DEITY && _current_company != OWNER_DEITY && _game_mode != GM_EDITOR) return CMD_ERROR;
 
 	/* Rename the signs when empty, otherwise remove it */
@@ -101,7 +101,7 @@ CommandCost CmdRenameSign(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 	} else { // Delete sign
 		if (flags & DC_EXEC) {
 			si->sign.MarkDirty();
-			_viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeSign(si->index));
+			if (_viewport_sign_kdtree_valid) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeSign(si->index));
 			delete si;
 
 			InvalidateWindowData(WC_SIGN_LIST, 0, 0);

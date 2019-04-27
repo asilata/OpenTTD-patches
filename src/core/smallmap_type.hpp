@@ -13,7 +13,6 @@
 #define SMALLMAP_TYPE_HPP
 
 #include "smallvec_type.hpp"
-#include "sort_func.hpp"
 
 /**
  * Simple pair of data. Both types have to be POD ("Plain Old Data")!
@@ -95,7 +94,7 @@ struct SmallMap : std::vector<SmallPair<T, U> > {
 	 */
 	inline bool Contains(const T &key) const
 	{
-		return this->Find(key) != this->End();
+		return this->Find(key) != std::vector<Pair>::end();
 	}
 
 	/**
@@ -163,16 +162,6 @@ struct SmallMap : std::vector<SmallPair<T, U> > {
 		Pair &n = std::vector<Pair>::back();
 		n.first = key;
 		return n.second;
-	}
-
-	inline void SortByKey()
-	{
-		QSortT(std::vector<Pair>::data(), std::vector<Pair>::size(), KeySorter);
-	}
-
-	static int CDECL KeySorter(const Pair *a, const Pair *b)
-	{
-		return a->first - b->first;
 	}
 };
 

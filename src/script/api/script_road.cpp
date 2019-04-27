@@ -245,7 +245,7 @@ static int32 LookupWithBuildOnSlopes(::Slope slope, Array *existing, int32 start
 
 	/* Now perform the actual rotation. */
 	for (int j = 0; j < base_rotate; j++) {
-		for (int i = 0; i < existing->size; i++) {
+		for (size_t i = 0; i < existing->size; i++) {
 			existing->array[i] = RotateNeighbour(existing->array[i]);
 		}
 		start = RotateNeighbour(start);
@@ -256,7 +256,7 @@ static int32 LookupWithBuildOnSlopes(::Slope slope, Array *existing, int32 start
 	RoadBits start_roadbits    = NeighbourToRoadBits(start);
 	RoadBits new_roadbits      = start_roadbits | NeighbourToRoadBits(end);
 	RoadBits existing_roadbits = ROAD_NONE;
-	for (int i = 0; i < existing->size; i++) {
+	for (size_t i = 0; i < existing->size; i++) {
 		existing_roadbits |= NeighbourToRoadBits(existing->array[i]);
 	}
 
@@ -354,7 +354,7 @@ static bool NormaliseTileOffset(int32 *tile)
 	/* The start tile and end tile cannot be the same tile either. */
 	if (start == end) return -1;
 
-	for (int i = 0; i < existing->size; i++) {
+	for (size_t i = 0; i < existing->size; i++) {
 		if (!NormaliseTileOffset(&existing->array[i])) return -1;
 	}
 
@@ -588,10 +588,10 @@ static bool NeighbourHasReachableRoad(::RoadTypes rts, TileIndex start_tile, Dia
 	if (!ScriptRoad::IsRoadTypeAvailable(roadtype)) return -1;
 
 	switch (build_type) {
-		case BT_ROAD:       return ::GetPrice(PR_BUILD_ROAD, 1, NULL);
-		case BT_DEPOT:      return ::GetPrice(PR_BUILD_DEPOT_ROAD, 1, NULL);
-		case BT_BUS_STOP:   return ::GetPrice(PR_BUILD_STATION_BUS, 1, NULL);
-		case BT_TRUCK_STOP: return ::GetPrice(PR_BUILD_STATION_TRUCK, 1, NULL);
+		case BT_ROAD:       return ::GetPrice(PR_BUILD_ROAD, 1, nullptr);
+		case BT_DEPOT:      return ::GetPrice(PR_BUILD_DEPOT_ROAD, 1, nullptr);
+		case BT_BUS_STOP:   return ::GetPrice(PR_BUILD_STATION_BUS, 1, nullptr);
+		case BT_TRUCK_STOP: return ::GetPrice(PR_BUILD_STATION_TRUCK, 1, nullptr);
 		default: return -1;
 	}
 }

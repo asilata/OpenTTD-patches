@@ -312,9 +312,10 @@ static const uint16 PALETTE_SPRITE_COUNT = 1;
 /* Programmable signal sprites */
 static const SpriteID SPR_PROGSIGNAL_BASE = SPR_PALETTE_BASE + PALETTE_SPRITE_COUNT;
 static const uint16 PROGSIGNAL_SPRITE_COUNT = 32;
+static const SpriteID SPR_DUP_PROGSIGNAL_BASE = SPR_PROGSIGNAL_BASE + PROGSIGNAL_SPRITE_COUNT;
 
 /* Zoning sprites */
-static const SpriteID SPR_ZONING_INNER_HIGHLIGHT_BASE       = SPR_PROGSIGNAL_BASE + PROGSIGNAL_SPRITE_COUNT;
+static const SpriteID SPR_ZONING_INNER_HIGHLIGHT_BASE       = SPR_DUP_PROGSIGNAL_BASE + PROGSIGNAL_SPRITE_COUNT;
 static const uint16 ZONING_INNER_HIGHLIGHT_SPRITE_COUNT = 32;
 static const SpriteID SPR_ZONING_INNER_HIGHLIGHT_RED        = SPR_ZONING_INNER_HIGHLIGHT_BASE + 19;
 static const SpriteID SPR_ZONING_INNER_HIGHLIGHT_GREEN      = SPR_ZONING_INNER_HIGHLIGHT_BASE + 20;
@@ -434,8 +435,11 @@ static const SpriteID SPR_MONO_SINGLE_SOUTH             = 1090;
 static const SpriteID SPR_MONO_SINGLE_EAST              = 1091;
 static const SpriteID SPR_MONO_SINGLE_WEST              = 1092;
 static const SpriteID SPR_MONO_TRACK_Y                  = 1093;
+static const SpriteID SPR_MONO_TRACK_X                  = 1094;
 static const SpriteID SPR_MONO_TRACK_BASE               = 1100;
 static const SpriteID SPR_MONO_TRACK_N_S                = 1117;
+static const SpriteID SPR_MONO_TRACK_Y_SNOW             = 1119;
+static const SpriteID SPR_MONO_TRACK_X_SNOW             = 1120;
 static const SpriteID SPR_MGLV_SINGLE_X                 = 1169;
 static const SpriteID SPR_MGLV_SINGLE_Y                 = 1170;
 static const SpriteID SPR_MGLV_SINGLE_NORTH             = 1171;
@@ -443,7 +447,10 @@ static const SpriteID SPR_MGLV_SINGLE_SOUTH             = 1172;
 static const SpriteID SPR_MGLV_SINGLE_EAST              = 1173;
 static const SpriteID SPR_MGLV_SINGLE_WEST              = 1174;
 static const SpriteID SPR_MGLV_TRACK_Y                  = 1175;
+static const SpriteID SPR_MGLV_TRACK_X                  = 1176;
 static const SpriteID SPR_MGLV_TRACK_BASE               = 1182;
+static const SpriteID SPR_MGLV_TRACK_Y_SNOW             = 1184;
+static const SpriteID SPR_MGLV_TRACK_X_SNOW             = 1185;
 static const SpriteID SPR_MGLV_TRACK_N_S                = 1199;
 static const SpriteID SPR_WAYPOINT_X_1            = SPR_OPENTTD_BASE + 78;
 static const SpriteID SPR_WAYPOINT_X_2            = SPR_OPENTTD_BASE + 79;

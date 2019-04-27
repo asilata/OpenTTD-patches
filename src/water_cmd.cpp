@@ -168,7 +168,7 @@ void MakeWaterKeepingClass(TileIndex tile, Owner o)
 		if (wc == WATER_CLASS_CANAL) {
 			/* If we clear the canal, we have to remove it from the infrastructure count as well. */
 			Company *c = Company::GetIfValid(o);
-			if (c != NULL) {
+			if (c != nullptr) {
 				c->infrastructure.water--;
 				DirtyCompanyInfrastructureWindows(c->index);
 			}
@@ -185,7 +185,7 @@ void MakeWaterKeepingClass(TileIndex tile, Owner o)
 	if (wc == WATER_CLASS_SEA && z > 0) {
 		/* Update company infrastructure count. */
 		Company *c = Company::GetIfValid(o);
-		if (c != NULL) {
+		if (c != nullptr) {
 			c->infrastructure.water++;
 			DirtyCompanyInfrastructureWindows(c->index);
 		}
@@ -227,7 +227,7 @@ static CommandCost RemoveShipDepot(TileIndex tile, DoCommandFlag flags)
 		delete Depot::GetByTile(tile);
 
 		Company *c = Company::GetIfValid(GetTileOwner(tile));
-		if (c != NULL) {
+		if (c != nullptr) {
 			c->infrastructure.water -= 2 * LOCK_DEPOT_TILE_FACTOR;
 			DirtyCompanyInfrastructureWindows(c->index);
 		}
@@ -293,7 +293,7 @@ static CommandCost DoBuildLock(TileIndex tile, DiagDirection dir, DoCommandFlag 
 	if (flags & DC_EXEC) {
 		/* Update company infrastructure counts. */
 		Company *c = Company::GetIfValid(_current_company);
-		if (c != NULL) {
+		if (c != nullptr) {
 			/* Counts for the water. */
 			if (!IsWaterTile(tile - delta)) c->infrastructure.water++;
 			if (!IsWaterTile(tile + delta)) c->infrastructure.water++;
@@ -338,7 +338,7 @@ static CommandCost RemoveLock(TileIndex tile, DoCommandFlag flags)
 	if (flags & DC_EXEC) {
 		/* Remove middle part from company infrastructure count. */
 		Company *c = Company::GetIfValid(GetTileOwner(tile));
-		if (c != NULL) {
+		if (c != nullptr) {
 			c->infrastructure.water -= 3 * LOCK_DEPOT_TILE_FACTOR; // three parts of the lock.
 			DirtyCompanyInfrastructureWindows(c->index);
 		}
@@ -387,7 +387,9 @@ bool RiverModifyDesertZone(TileIndex tile, void *)
  * @param tile end tile of stretch-dragging
  * @param flags type of operation
  * @param p1 start tile of stretch-dragging
- * @param p2 waterclass to build. sea and river can only be built in scenario editor, unless enable_build_river is enabled
+ * @param p2 various bitstuffed data
+ *  bits  0-1: waterclass to build. sea and river can only be built in scenario editor, unless enable_build_river is enabled
+ *  bit     2: Whether to use the Orthogonal (0) or Diagonal (1) iterator.
  * @param text unused
  * @return the cost of this operation or an error
  */
@@ -398,6 +400,7 @@ CommandCost CmdBuildCanal(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 
 	/* Outside of the editor you can only build canals, not oceans */
 	if (_game_mode != GM_EDITOR) {
+		if (HasBit(p2, 2)) return CMD_ERROR;
 		if (wc == WATER_CLASS_RIVER) {
 			if (!_settings_game.construction.enable_build_river) return CMD_ERROR;
 		} else if (wc != WATER_CLASS_CANAL) {
@@ -405,13 +408,17 @@ CommandCost CmdBuildCanal(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 		}
 	}
 
-	TileArea ta(tile, p1);
-
 	/* Outside the editor you can only drag canals, and not areas */
-	if (_game_mode != GM_EDITOR && ta.w != 1 && ta.h != 1) return CMD_ERROR;
+	if (_game_mode != GM_EDITOR) {
+		TileArea ta(tile, p1);
+		if (ta.w != 1 && ta.h != 1) return CMD_ERROR;
+	}
 
 	CommandCost cost(EXPENSES_CONSTRUCTION);
-	TILE_AREA_LOOP(tile, ta) {
+
+	TileIterator *iter = HasBit(p2, 2) ? (TileIterator *)new DiagonalTileIterator(tile, p1) : new OrthogonalTileIterator(tile, p1);
+	for (; *iter != INVALID_TILE; ++(*iter)) {
+		TileIndex tile = *iter;
 		CommandCost ret;
 
 		Slope slope = GetTileSlope(tile);
@@ -434,7 +441,7 @@ CommandCost CmdBuildCanal(TileIndex tile, DoCommandFlag flags, uint32 p1, uint32
 					MakeRiver(tile, Random());
 					if (_game_mode == GM_EDITOR) {
 						TileIndex tile2 = tile;
-						CircularTileSearch(&tile2, RIVER_OFFSET_DESERT_DISTANCE, RiverModifyDesertZone, NULL);
+						CircularTileSearch(&tile2, RIVER_OFFSET_DESERT_DISTANCE, RiverModifyDesertZone, nullptr);
 					}
 					break;
 
@@ -947,11 +954,11 @@ static void FloodVehicle(Vehicle *v)
  * Flood a vehicle if we are allowed to flood it, i.e. when it is on the ground.
  * @param v    The vehicle to test for flooding.
  * @param data The z of level to flood.
- * @return NULL as we always want to remove everything.
+ * @return nullptr as we always want to remove everything.
  */
 static Vehicle *FloodVehicleProc(Vehicle *v, void *data)
 {
-	if ((v->vehstatus & VS_CRASHED) != 0) return NULL;
+	if ((v->vehstatus & VS_CRASHED) != 0) return nullptr;
 
 	switch (v->type) {
 		default: break;
@@ -979,7 +986,7 @@ static Vehicle *FloodVehicleProc(Vehicle *v, void *data)
 		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 /**
@@ -1337,14 +1344,14 @@ extern const TileTypeProcs _tile_type_water_procs = {
 	DrawTile_Water,           // draw_tile_proc
 	GetSlopePixelZ_Water,     // get_slope_z_proc
 	ClearTile_Water,          // clear_tile_proc
-	NULL,                     // add_accepted_cargo_proc
+	nullptr,                     // add_accepted_cargo_proc
 	GetTileDesc_Water,        // get_tile_desc_proc
 	GetTileTrackStatus_Water, // get_tile_track_status_proc
 	ClickTile_Water,          // click_tile_proc
-	NULL,                     // animate_tile_proc
+	nullptr,                     // animate_tile_proc
 	TileLoop_Water,           // tile_loop_proc
 	ChangeTileOwner_Water,    // change_tile_owner_proc
-	NULL,                     // add_produced_cargo_proc
+	nullptr,                     // add_produced_cargo_proc
 	VehicleEnter_Water,       // vehicle_enter_tile_proc
 	GetFoundation_Water,      // get_foundation_proc
 	TerraformTile_Water,      // terraform_tile_proc

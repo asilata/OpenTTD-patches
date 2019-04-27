@@ -73,7 +73,7 @@ static const StringID _font_zoom_dropdown[] = {
 };
 
 int _nb_orig_names = SPECSTR_TOWNNAME_LAST - SPECSTR_TOWNNAME_START + 1; ///< Number of original town names.
-static StringID *_grf_names = NULL; ///< Pointer to town names defined by NewGRFs.
+static StringID *_grf_names = nullptr; ///< Pointer to town names defined by NewGRFs.
 static int _nb_grf_names = 0;       ///< Number of town names defined by NewGRFs.
 
 static Dimension _circle_size; ///< Dimension of the circle +/- icon. This is here as not all users are within the class of the settings window.
@@ -104,17 +104,14 @@ static inline StringID TownName(int town_name)
 
 /**
  * Get index of the current screen resolution.
- * @return Index of the current screen resolution if it is a known resolution, #_num_resolutions otherwise.
+ * @return Index of the current screen resolution if it is a known resolution, _resolutions.size() otherwise.
  */
-static int GetCurRes()
+static uint GetCurRes()
 {
-	int i;
+	uint i;
 
-	for (i = 0; i != _num_resolutions; i++) {
-		if ((int)_resolutions[i].width == _screen.width &&
-				(int)_resolutions[i].height == _screen.height) {
-			break;
-		}
+	for (i = 0; i != _resolutions.size(); i++) {
+		if (_resolutions[i] == Dimension(_screen.width, _screen.height)) break;
 	}
 	return i;
 }
@@ -122,20 +119,20 @@ static int GetCurRes()
 static void ShowCustCurrency();
 
 template <class T>
-static DropDownList *BuildSetDropDownList(int *selected_index, bool allow_selection)
+static DropDownList BuildSetDropDownList(int *selected_index, bool allow_selection)
 {
 	int n = T::GetNumSets();
 	*selected_index = T::GetIndexOfUsedSet();
 
-	DropDownList *list = new DropDownList();
+	DropDownList list;
 	for (int i = 0; i < n; i++) {
-		list->push_back(new DropDownListCharStringItem(T::GetSet(i)->name, i, !allow_selection && (*selected_index != i)));
+		list.emplace_back(new DropDownListCharStringItem(T::GetSet(i)->name, i, !allow_selection && (*selected_index != i)));
 	}
 
 	return list;
 }
 
-DropDownList *BuildMusicSetDropDownList(int *selected_index)
+DropDownList BuildMusicSetDropDownList(int *selected_index)
 {
 	return BuildSetDropDownList<BaseMusic>(selected_index, true);
 }
@@ -198,14 +195,13 @@ struct GameOptionsWindow : Window {
 	 * Build the dropdown list for a specific widget.
 	 * @param widget         Widget to build list for
 	 * @param selected_index Currently selected item
-	 * @return the built dropdown list, or NULL if the widget has no dropdown menu.
+	 * @return the built dropdown list, or nullptr if the widget has no dropdown menu.
 	 */
-	DropDownList *BuildDropDownList(int widget, int *selected_index) const
+	DropDownList BuildDropDownList(int widget, int *selected_index) const
 	{
-		DropDownList *list = NULL;
+		DropDownList list;
 		switch (widget) {
 			case WID_GO_CURRENCY_DROPDOWN: { // Setup currencies dropdown
-				list = new DropDownList();
 				*selected_index = this->opt->locale.currency;
 				StringID *items = BuildCurrencyDropdown();
 				uint64 disabled = _game_mode == GM_MENU ? 0LL : ~GetMaskOfAllowedCurrencies();
@@ -213,18 +209,17 @@ struct GameOptionsWindow : Window {
 				/* Add non-custom currencies; sorted naturally */
 				for (uint i = 0; i < CURRENCY_END; items++, i++) {
 					if (i == CURRENCY_CUSTOM) continue;
-					list->push_back(new DropDownListStringItem(*items, i, HasBit(disabled, i)));
+					list.emplace_back(new DropDownListStringItem(*items, i, HasBit(disabled, i)));
 				}
-				QSortT(list->data(), list->size(), DropDownListStringItem::NatSortFunc);
+				std::sort(list.begin(), list.end(), DropDownListStringItem::NatSortFunc);
 
 				/* Append custom currency at the end */
-				list->push_back(new DropDownListItem(-1, false)); // separator line
-				list->push_back(new DropDownListStringItem(STR_GAME_OPTIONS_CURRENCY_CUSTOM, CURRENCY_CUSTOM, HasBit(disabled, CURRENCY_CUSTOM)));
+				list.emplace_back(new DropDownListItem(-1, false)); // separator line
+				list.emplace_back(new DropDownListStringItem(STR_GAME_OPTIONS_CURRENCY_CUSTOM, CURRENCY_CUSTOM, HasBit(disabled, CURRENCY_CUSTOM)));
 				break;
 			}
 
 			case WID_GO_ROADSIDE_DROPDOWN: { // Setup road-side dropdown
-				list = new DropDownList();
 				*selected_index = this->opt->vehicle.road_side;
 				const StringID *items = _driveside_dropdown;
 				uint disabled = 0;
@@ -237,13 +232,12 @@ struct GameOptionsWindow : Window {
 				}
 
 				for (uint i = 0; *items != INVALID_STRING_ID; items++, i++) {
-					list->push_back(new DropDownListStringItem(*items, i, HasBit(disabled, i)));
+					list.emplace_back(new DropDownListStringItem(*items, i, HasBit(disabled, i)));
 				}
 				break;
 			}
 
 			case WID_GO_TOWNNAME_DROPDOWN: { // Setup townname dropdown
-				list = new DropDownList();
 				*selected_index = this->opt->game_creation.town_name;
 
 				int enabled_item = (_game_mode == GM_MENU || Town::GetNumItems() == 0) ? -1 : *selected_index;
@@ -251,71 +245,66 @@ struct GameOptionsWindow : Window {
 				/* Add and sort newgrf townnames generators */
 				for (int i = 0; i < _nb_grf_names; i++) {
 					int result = _nb_orig_names + i;
-					list->push_back(new DropDownListStringItem(_grf_names[i], result, enabled_item != result && enabled_item >= 0));
+					list.emplace_back(new DropDownListStringItem(_grf_names[i], result, enabled_item != result && enabled_item >= 0));
 				}
-				QSortT(list->data(), list->size(), DropDownListStringItem::NatSortFunc);
+				std::sort(list.begin(), list.end(), DropDownListStringItem::NatSortFunc);
 
-				int newgrf_size = list->size();
+				size_t newgrf_size = list.size();
 				/* Insert newgrf_names at the top of the list */
 				if (newgrf_size > 0) {
-					list->push_back(new DropDownListItem(-1, false)); // separator line
+					list.emplace_back(new DropDownListItem(-1, false)); // separator line
 					newgrf_size++;
 				}
 
 				/* Add and sort original townnames generators */
 				for (int i = 0; i < _nb_orig_names; i++) {
-					list->push_back(new DropDownListStringItem(STR_GAME_OPTIONS_TOWN_NAME_ORIGINAL_ENGLISH + i, i, enabled_item != i && enabled_item >= 0));
+					list.emplace_back(new DropDownListStringItem(STR_GAME_OPTIONS_TOWN_NAME_ORIGINAL_ENGLISH + i, i, enabled_item != i && enabled_item >= 0));
 				}
-				QSortT(list->data() + newgrf_size, list->size() - newgrf_size, DropDownListStringItem::NatSortFunc);
+				std::sort(list.begin() + newgrf_size, list.end(), DropDownListStringItem::NatSortFunc);
 				break;
 			}
 
 			case WID_GO_AUTOSAVE_DROPDOWN: { // Setup autosave dropdown
-				list = new DropDownList();
 				*selected_index = _settings_client.gui.autosave;
 				const StringID *items = _autosave_dropdown;
 				for (uint i = 0; *items != INVALID_STRING_ID; items++, i++) {
-					list->push_back(new DropDownListStringItem(*items, i, false));
+					list.emplace_back(new DropDownListStringItem(*items, i, false));
 				}
 				break;
 			}
 
 			case WID_GO_LANG_DROPDOWN: { // Setup interface language dropdown
-				list = new DropDownList();
 				for (uint i = 0; i < _languages.size(); i++) {
 					if (&_languages[i] == _current_language) *selected_index = i;
-					list->push_back(new DropDownListStringItem(SPECSTR_LANGUAGE_START + i, i, false));
+					list.emplace_back(new DropDownListStringItem(SPECSTR_LANGUAGE_START + i, i, false));
 				}
-				QSortT(list->data(), list->size(), DropDownListStringItem::NatSortFunc);
+				std::sort(list.begin(), list.end(), DropDownListStringItem::NatSortFunc);
 				break;
 			}
 
 			case WID_GO_RESOLUTION_DROPDOWN: // Setup resolution dropdown
-				if (_num_resolutions == 0) break;
+				if (_resolutions.empty()) break;
 
-				list = new DropDownList();
 				*selected_index = GetCurRes();
-				for (int i = 0; i < _num_resolutions; i++) {
-					list->push_back(new DropDownListStringItem(SPECSTR_RESOLUTION_START + i, i, false));
+				for (uint i = 0; i < _resolutions.size(); i++) {
+					list.emplace_back(new DropDownListStringItem(SPECSTR_RESOLUTION_START + i, i, false));
 				}
 				break;
 
 			case WID_GO_GUI_ZOOM_DROPDOWN: {
-				list = new DropDownList();
 				*selected_index = ZOOM_LVL_OUT_4X - _gui_zoom;
 				const StringID *items = _gui_zoom_dropdown;
 				for (int i = 0; *items != INVALID_STRING_ID; items++, i++) {
-					list->push_back(new DropDownListStringItem(*items, i, _settings_client.gui.zoom_min > ZOOM_LVL_OUT_4X - i));
+					list.emplace_back(new DropDownListStringItem(*items, i, _settings_client.gui.zoom_min > ZOOM_LVL_OUT_4X - i));
 				}
 				break;
 			}
 
 			case WID_GO_FONT_ZOOM_DROPDOWN: {
-				list = new DropDownList();
 				*selected_index = ZOOM_LVL_OUT_4X - _font_zoom;
 				const StringID *items = _font_zoom_dropdown;
 				for (int i = 0; *items != INVALID_STRING_ID; items++, i++) {
-					list->push_back(new DropDownListStringItem(*items, i, false));
+					list.emplace_back(new DropDownListStringItem(*items, i, false));
 				}
 				break;
 			}
@@ -331,9 +320,6 @@ struct GameOptionsWindow : Window {
 			case WID_GO_BASE_MUSIC_DROPDOWN:
 				list = BuildMusicSetDropDownList(selected_index);
 				break;
-
-			default:
-				return NULL;
 		}
 
 		return list;
@@ -347,7 +333,7 @@ struct GameOptionsWindow : Window {
 			case WID_GO_TOWNNAME_DROPDOWN:   SetDParam(0, TownName(this->opt->game_creation.town_name)); break;
 			case WID_GO_AUTOSAVE_DROPDOWN:   SetDParam(0, _autosave_dropdown[_settings_client.gui.autosave]); break;
 			case WID_GO_LANG_DROPDOWN:       SetDParamStr(0, _current_language->own_name); break;
-			case WID_GO_RESOLUTION_DROPDOWN: SetDParam(0, GetCurRes() == _num_resolutions ? STR_GAME_OPTIONS_RESOLUTION_OTHER : SPECSTR_RESOLUTION_START + GetCurRes()); break;
+			case WID_GO_RESOLUTION_DROPDOWN: SetDParam(0, GetCurRes() == _resolutions.size() ? STR_GAME_OPTIONS_RESOLUTION_OTHER : SPECSTR_RESOLUTION_START + GetCurRes()); break;
 			case WID_GO_GUI_ZOOM_DROPDOWN:   SetDParam(0, _gui_zoom_dropdown[ZOOM_LVL_OUT_4X - _gui_zoom]); break;
 			case WID_GO_FONT_ZOOM_DROPDOWN:  SetDParam(0, _font_zoom_dropdown[ZOOM_LVL_OUT_4X - _font_zoom]); break;
 			case WID_GO_BASE_GRF_DROPDOWN:   SetDParamStr(0, BaseGraphics::GetUsedSet()->name); break;
@@ -429,17 +415,16 @@ struct GameOptionsWindow : Window {
 
 			default: {
 				int selected;
-				DropDownList *list = this->BuildDropDownList(widget, &selected);
-				if (list != NULL) {
+				DropDownList list = this->BuildDropDownList(widget, &selected);
+				if (!list.empty()) {
 					/* Find the biggest item for the default size. */
-					for (const DropDownListItem * const ddli : *list) {
+					for (const auto &ddli : list) {
 						Dimension string_dim;
 						int width = ddli->Width();
 						string_dim.width = width + padding.width;
 						string_dim.height = ddli->Height(width) + padding.height;
 						*size = maxdim(*size, string_dim);
 					}
-					delete list;
 				}
 			}
 		}
@@ -448,19 +433,19 @@ struct GameOptionsWindow : Window {
 	void OnClick(Point pt, int widget, int click_count) override
 	{
 		if (widget >= WID_GO_BASE_GRF_TEXTFILE && widget < WID_GO_BASE_GRF_TEXTFILE + TFT_END) {
-			if (BaseGraphics::GetUsedSet() == NULL) return;
+			if (BaseGraphics::GetUsedSet() == nullptr) return;
 
 			ShowBaseSetTextfileWindow((TextfileType)(widget - WID_GO_BASE_GRF_TEXTFILE), BaseGraphics::GetUsedSet(), STR_CONTENT_TYPE_BASE_GRAPHICS);
 			return;
 		}
 		if (widget >= WID_GO_BASE_SFX_TEXTFILE && widget < WID_GO_BASE_SFX_TEXTFILE + TFT_END) {
-			if (BaseSounds::GetUsedSet() == NULL) return;
+			if (BaseSounds::GetUsedSet() == nullptr) return;
 
 			ShowBaseSetTextfileWindow((TextfileType)(widget - WID_GO_BASE_SFX_TEXTFILE), BaseSounds::GetUsedSet(), STR_CONTENT_TYPE_BASE_SOUNDS);
 			return;
 		}
 		if (widget >= WID_GO_BASE_MUSIC_TEXTFILE && widget < WID_GO_BASE_MUSIC_TEXTFILE + TFT_END) {
-			if (BaseMusic::GetUsedSet() == NULL) return;
+			if (BaseMusic::GetUsedSet() == nullptr) return;
 
 			ShowBaseSetTextfileWindow((TextfileType)(widget - WID_GO_BASE_MUSIC_TEXTFILE), BaseMusic::GetUsedSet(), STR_CONTENT_TYPE_BASE_MUSIC);
 			return;
@@ -477,9 +462,9 @@ struct GameOptionsWindow : Window {
 
 			default: {
 				int selected;
-				DropDownList *list = this->BuildDropDownList(widget, &selected);
-				if (list != NULL) {
-					ShowDropDownList(this, list, selected, widget);
+				DropDownList list = this->BuildDropDownList(widget, &selected);
+				if (!list.empty()) {
+					ShowDropDownList(this, std::move(list), selected, widget);
 				} else {
 					if (widget == WID_GO_RESOLUTION_DROPDOWN) ShowErrorMessage(STR_ERROR_RESOLUTION_LIST_FAILED, INVALID_STRING_ID, WL_ERROR);
 				}
@@ -520,7 +505,7 @@ struct GameOptionsWindow : Window {
 			case WID_GO_ROADSIDE_DROPDOWN: // Road side
 				if (this->opt->vehicle.road_side != index) { // only change if setting changed
 					uint i;
-					if (GetSettingFromName("vehicle.road_side", &i) == NULL) NOT_REACHED();
+					if (GetSettingFromName("vehicle.road_side", &i) == nullptr) NOT_REACHED();
 					SetSettingValue(i, index);
 					MarkWholeScreenDirty();
 				}
@@ -547,7 +532,7 @@ struct GameOptionsWindow : Window {
 				break;
 
 			case WID_GO_RESOLUTION_DROPDOWN: // Change resolution
-				if (index < _num_resolutions && ChangeResInGame(_resolutions[index].width, _resolutions[index].height)) {
+				if ((uint)index < _resolutions.size() && ChangeResInGame(_resolutions[index].width, _resolutions[index].height)) {
 					this->SetDirty();
 				}
 				break;
@@ -598,9 +583,9 @@ struct GameOptionsWindow : Window {
 		this->GetWidget<NWidgetCore>(WID_GO_BASE_GRF_STATUS)->SetDataTip(missing_files ? STR_EMPTY : STR_GAME_OPTIONS_BASE_GRF_STATUS, STR_NULL);
 
 		for (TextfileType tft = TFT_BEGIN; tft < TFT_END; tft++) {
-			this->SetWidgetDisabledState(WID_GO_BASE_GRF_TEXTFILE + tft, BaseGraphics::GetUsedSet() == NULL || BaseGraphics::GetUsedSet()->GetTextfile(tft) == NULL);
-			this->SetWidgetDisabledState(WID_GO_BASE_SFX_TEXTFILE + tft, BaseSounds::GetUsedSet() == NULL || BaseSounds::GetUsedSet()->GetTextfile(tft) == NULL);
-			this->SetWidgetDisabledState(WID_GO_BASE_MUSIC_TEXTFILE + tft, BaseMusic::GetUsedSet() == NULL || BaseMusic::GetUsedSet()->GetTextfile(tft) == NULL);
+			this->SetWidgetDisabledState(WID_GO_BASE_GRF_TEXTFILE + tft, BaseGraphics::GetUsedSet() == nullptr || BaseGraphics::GetUsedSet()->GetTextfile(tft) == nullptr);
+			this->SetWidgetDisabledState(WID_GO_BASE_SFX_TEXTFILE + tft, BaseSounds::GetUsedSet() == nullptr || BaseSounds::GetUsedSet()->GetTextfile(tft) == nullptr);
+			this->SetWidgetDisabledState(WID_GO_BASE_MUSIC_TEXTFILE + tft, BaseMusic::GetUsedSet() == nullptr || BaseMusic::GetUsedSet()->GetTextfile(tft) == nullptr);
 		}
 
 		missing_files = BaseMusic::GetUsedSet()->GetNumInvalid() == 0;
@@ -893,14 +878,14 @@ bool BaseSettingEntry::IsVisible(const BaseSettingEntry *item) const
  * Find setting entry at row \a row_num
  * @param row_num Index of entry to return
  * @param cur_row Current row number
- * @return The requested setting entry or \c NULL if it not found (folded or filtered)
+ * @return The requested setting entry or \c nullptr if it not found (folded or filtered)
  */
 BaseSettingEntry *BaseSettingEntry::FindEntry(uint row_num, uint *cur_row)
 {
-	if (this->IsFiltered()) return NULL;
+	if (this->IsFiltered()) return nullptr;
 	if (row_num == *cur_row) return this;
 	(*cur_row)++;
-	return NULL;
+	return nullptr;
 }
 
 /**
@@ -975,7 +960,7 @@ uint BaseSettingEntry::Draw(GameSettings *settings_ptr, int left, int right, int
 SettingEntry::SettingEntry(const char *name)
 {
 	this->name = name;
-	this->setting = NULL;
+	this->setting = nullptr;
 	this->index = 0;
 }
 
@@ -987,7 +972,7 @@ void SettingEntry::Init(byte level)
 {
 	BaseSettingEntry::Init(level);
 	this->setting = GetSettingFromName(this->name, &this->index);
-	assert(this->setting != NULL);
+	assert_msg(this->setting != nullptr, "name: %s", this->name);
 }
 
 /**
@@ -1267,14 +1252,14 @@ uint SettingsContainer::Length() const
  * Find the setting entry at row number \a row_num
  * @param row_num Index of entry to return
  * @param cur_row Variable used for keeping track of the current row number. Should point to memory initialized to \c 0 when first called.
- * @return The requested setting entry or \c NULL if it does not exist
+ * @return The requested setting entry or \c nullptr if it does not exist
  */
 BaseSettingEntry *SettingsContainer::FindEntry(uint row_num, uint *cur_row)
 {
-	BaseSettingEntry *pe = NULL;
+	BaseSettingEntry *pe = nullptr;
 	for (EntryVector::iterator it = this->entries.begin(); it != this->entries.end(); ++it) {
 		pe = (*it)->FindEntry(row_num, cur_row);
-		if (pe != NULL) {
+		if (pe != nullptr) {
 			break;
 		}
 	}
@@ -1429,14 +1414,14 @@ uint SettingsPage::Length() const
  * Find setting entry at row \a row_num
  * @param row_num Index of entry to return
  * @param cur_row Current row number
- * @return The requested setting entry or \c NULL if it not found (folded or filtered)
+ * @return The requested setting entry or \c nullptr if it not found (folded or filtered)
  */
 BaseSettingEntry *SettingsPage::FindEntry(uint row_num, uint *cur_row)
 {
-	if (this->IsFiltered()) return NULL;
+	if (this->IsFiltered()) return nullptr;
 	if (row_num == *cur_row) return this;
 	(*cur_row)++;
-	if (this->folded) return NULL;
+	if (this->folded) return nullptr;
 
 	return SettingsContainer::FindEntry(row_num, cur_row);
 }
@@ -1492,9 +1477,9 @@ void SettingsPage::DrawSetting(GameSettings *settings_ptr, int left, int right, 
 /** Construct settings tree */
 static SettingsContainer &GetSettingsTree()
 {
-	static SettingsContainer *main = NULL;
+	static SettingsContainer *main = nullptr;
 
-	if (main == NULL)
+	if (main == nullptr)
 	{
 		/* Build up the dynamic settings-array only once per OpenTTD session */
 		main = new SettingsContainer();
@@ -1939,10 +1924,10 @@ struct GameSettingsWindow : Window {
 
 	static GameSettings *settings_ptr; ///< Pointer to the game settings being displayed and modified.
 
-	SettingEntry *valuewindow_entry;   ///< If non-NULL, pointer to setting for which a value-entering window has been opened.
-	SettingEntry *clicked_entry;       ///< If non-NULL, pointer to a clicked numeric setting (with a depressed left or right button).
-	SettingEntry *last_clicked;        ///< If non-NULL, pointer to the last clicked setting.
-	SettingEntry *valuedropdown_entry; ///< If non-NULL, pointer to the value for which a dropdown window is currently opened.
+	SettingEntry *valuewindow_entry;   ///< If non-nullptr, pointer to setting for which a value-entering window has been opened.
+	SettingEntry *clicked_entry;       ///< If non-nullptr, pointer to a clicked numeric setting (with a depressed left or right button).
+	SettingEntry *last_clicked;        ///< If non-nullptr, pointer to the last clicked setting.
+	SettingEntry *valuedropdown_entry; ///< If non-nullptr, pointer to the value for which a dropdown window is currently opened.
 	bool closing_dropdown;             ///< True, if the dropdown list is currently closing.
 
 	SettingFilter filter;              ///< Filter for the list.
@@ -1966,10 +1951,10 @@ struct GameSettingsWindow : Window {
 		_circle_size = maxdim(GetSpriteSize(SPR_CIRCLE_FOLDED), GetSpriteSize(SPR_CIRCLE_UNFOLDED));
 		GetSettingsTree().FoldAll(); // Close all sub-pages
 
-		this->valuewindow_entry = NULL; // No setting entry for which a entry window is opened
-		this->clicked_entry = NULL; // No numeric setting buttons are depressed
-		this->last_clicked = NULL;
-		this->valuedropdown_entry = NULL;
+		this->valuewindow_entry = nullptr; // No setting entry for which a entry window is opened
+		this->clicked_entry = nullptr; // No numeric setting buttons are depressed
+		this->last_clicked = nullptr;
+		this->valuedropdown_entry = nullptr;
 		this->closing_dropdown = false;
 		this->manually_changed_folding = false;
 
@@ -2023,9 +2008,9 @@ struct GameSettingsWindow : Window {
 	{
 		if (this->closing_dropdown) {
 			this->closing_dropdown = false;
-			assert(this->valuedropdown_entry != NULL);
+			assert(this->valuedropdown_entry != nullptr);
 			this->valuedropdown_entry->SetButtons(0);
-			this->valuedropdown_entry = NULL;
+			this->valuedropdown_entry = nullptr;
 		}
 
 		/* Reserve the correct number of lines for the 'some search results are hidden' notice in the central settings display panel. */
@@ -2078,28 +2063,25 @@ struct GameSettingsWindow : Window {
 		}
 	}
 
-	DropDownList *BuildDropDownList(int widget) const
+	DropDownList BuildDropDownList(int widget) const
 	{
-		DropDownList *list = NULL;
+		DropDownList list;
 		switch (widget) {
 			case WID_GS_RESTRICT_DROPDOWN:
-				list = new DropDownList();
-
 				for (int mode = 0; mode != RM_END; mode++) {
 					/* If we are in adv. settings screen for the new game's settings,
 					 * we don't want to allow comparing with new game's settings. */
 					bool disabled = mode == RM_CHANGED_AGAINST_NEW && settings_ptr == &_settings_newgame;
 
-					list->push_back(new DropDownListStringItem(_game_settings_restrict_dropdown[mode], mode, disabled));
+					list.emplace_back(new DropDownListStringItem(_game_settings_restrict_dropdown[mode], mode, disabled));
 				}
 				break;
 
 			case WID_GS_TYPE_DROPDOWN:
-				list = new DropDownList();
-				list->push_back(new DropDownListStringItem(STR_CONFIG_SETTING_TYPE_DROPDOWN_ALL, ST_ALL, false));
-				list->push_back(new DropDownListStringItem(_game_mode == GM_MENU ? STR_CONFIG_SETTING_TYPE_DROPDOWN_GAME_MENU : STR_CONFIG_SETTING_TYPE_DROPDOWN_GAME_INGAME, ST_GAME, false));
-				list->push_back(new DropDownListStringItem(_game_mode == GM_MENU ? STR_CONFIG_SETTING_TYPE_DROPDOWN_COMPANY_MENU : STR_CONFIG_SETTING_TYPE_DROPDOWN_COMPANY_INGAME, ST_COMPANY, false));
-				list->push_back(new DropDownListStringItem(STR_CONFIG_SETTING_TYPE_DROPDOWN_CLIENT, ST_CLIENT, false));
+				list.emplace_back(new DropDownListStringItem(STR_CONFIG_SETTING_TYPE_DROPDOWN_ALL, ST_ALL, false));
+				list.emplace_back(new DropDownListStringItem(_game_mode == GM_MENU ? STR_CONFIG_SETTING_TYPE_DROPDOWN_GAME_MENU : STR_CONFIG_SETTING_TYPE_DROPDOWN_GAME_INGAME, ST_GAME, false));
+				list.emplace_back(new DropDownListStringItem(_game_mode == GM_MENU ? STR_CONFIG_SETTING_TYPE_DROPDOWN_COMPANY_MENU : STR_CONFIG_SETTING_TYPE_DROPDOWN_COMPANY_INGAME, ST_COMPANY, false));
+				list.emplace_back(new DropDownListStringItem(STR_CONFIG_SETTING_TYPE_DROPDOWN_CLIENT, ST_CLIENT, false));
 				break;
 		}
 		return list;
@@ -2118,7 +2100,7 @@ struct GameSettingsWindow : Window {
 			}
 
 			case WID_GS_HELP_TEXT:
-				if (this->last_clicked != NULL) {
+				if (this->last_clicked != nullptr) {
 					const SettingDesc *sd = this->last_clicked->setting;
 
 					int y = r.top;
@@ -2147,7 +2129,7 @@ struct GameSettingsWindow : Window {
 
 	/**
 	 * Set the entry that should have its help text displayed, and mark the window dirty so it gets repainted.
-	 * @param pe Setting to display help text of, use \c NULL to stop displaying help of the currently displayed setting.
+	 * @param pe Setting to display help text of, use \c nullptr to stop displaying help of the currently displayed setting.
 	 */
 	void SetDisplayedHelpText(SettingEntry *pe)
 	{
@@ -2171,17 +2153,17 @@ struct GameSettingsWindow : Window {
 				break;
 
 			case WID_GS_RESTRICT_DROPDOWN: {
-				DropDownList *list = this->BuildDropDownList(widget);
-				if (list != NULL) {
-					ShowDropDownList(this, list, this->filter.mode, widget);
+				DropDownList list = this->BuildDropDownList(widget);
+				if (!list.empty()) {
+					ShowDropDownList(this, std::move(list), this->filter.mode, widget);
 				}
 				break;
 			}
 
 			case WID_GS_TYPE_DROPDOWN: {
-				DropDownList *list = this->BuildDropDownList(widget);
-				if (list != NULL) {
-					ShowDropDownList(this, list, this->filter.type, widget);
+				DropDownList list = this->BuildDropDownList(widget);
+				if (!list.empty()) {
+					ShowDropDownList(this, std::move(list), this->filter.type, widget);
 				}
 				break;
 			}
@@ -2196,14 +2178,14 @@ struct GameSettingsWindow : Window {
 		uint cur_row = 0;
 		BaseSettingEntry *clicked_entry = GetSettingsTree().FindEntry(btn, &cur_row);
 
-		if (clicked_entry == NULL) return;  // Clicked below the last setting of the page
+		if (clicked_entry == nullptr) return;  // Clicked below the last setting of the page
 
 		int x = (_current_text_dir == TD_RTL ? this->width - 1 - pt.x : pt.x) - SETTINGTREE_LEFT_OFFSET - (clicked_entry->level + 1) * LEVEL_WIDTH;  // Shift x coordinate
 		if (x < 0) return;  // Clicked left of the entry
 
 		SettingsPage *clicked_page = dynamic_cast<SettingsPage*>(clicked_entry);
-		if (clicked_page != NULL) {
-			this->SetDisplayedHelpText(NULL);
+		if (clicked_page != nullptr) {
+			this->SetDisplayedHelpText(nullptr);
 			clicked_page->folded = !clicked_page->folded; // Flip 'folded'-ness of the sub-page
 
 			this->manually_changed_folding = true;
@@ -2213,7 +2195,7 @@ struct GameSettingsWindow : Window {
 		}
 
 		SettingEntry *pe = dynamic_cast<SettingEntry*>(clicked_entry);
-		assert(pe != NULL);
+		assert(pe != nullptr);
 		const SettingDesc *sd = pe->setting;
 
 		/* return if action is only active in network, or only settable by server */
@@ -2235,9 +2217,9 @@ struct GameSettingsWindow : Window {
 				HideDropDownMenu(this);
 				this->closing_dropdown = false;
 				this->valuedropdown_entry->SetButtons(0);
-				this->valuedropdown_entry = NULL;
+				this->valuedropdown_entry = nullptr;
 			} else {
-				if (this->valuedropdown_entry != NULL) this->valuedropdown_entry->SetButtons(0);
+				if (this->valuedropdown_entry != nullptr) this->valuedropdown_entry->SetButtons(0);
 				this->closing_dropdown = false;
 
 				const NWidgetBase *wid = this->GetWidget<NWidgetBase>(WID_GS_OPTIONSPANEL);
@@ -2254,14 +2236,14 @@ struct GameSettingsWindow : Window {
 					this->valuedropdown_entry = pe;
 					this->valuedropdown_entry->SetButtons(SEF_LEFT_DEPRESSED);
 
-					DropDownList *list = new DropDownList();
+					DropDownList list;
 					for (int i = sdb->min; i <= (int)sdb->max; i++) {
 						int val = sd->orderproc ? sd->orderproc(i - sdb->min) : i;
 						assert_msg(val >= sdb->min && val <= (int)sdb->max, "min: %d, max: %d, val: %d", sdb->min, sdb->max, val);
-						list->push_back(new DropDownListStringItem(sdb->str_val + val - sdb->min, val, false));
+						list.emplace_back(new DropDownListStringItem(sdb->str_val + val - sdb->min, val, false));
 					}
 
-					ShowDropDownListAt(this, list, value, -1, wi_rect, COLOUR_ORANGE, true);
+					ShowDropDownListAt(this, std::move(list), value, -1, wi_rect, COLOUR_ORANGE, true);
 				}
 			}
 			this->SetDirty();
@@ -2304,7 +2286,7 @@ struct GameSettingsWindow : Window {
 
 					/* Set up scroller timeout for numeric values */
 					if (value != oldvalue) {
-						if (this->clicked_entry != NULL) { // Release previous buttons if any
+						if (this->clicked_entry != nullptr) { // Release previous buttons if any
 							this->clicked_entry->SetButtons(0);
 						}
 						this->clicked_entry = pe;
@@ -2347,9 +2329,9 @@ struct GameSettingsWindow : Window {
 
 	void OnTimeout() override
 	{
-		if (this->clicked_entry != NULL) { // On timeout, release any depressed buttons
+		if (this->clicked_entry != nullptr) { // On timeout, release any depressed buttons
 			this->clicked_entry->SetButtons(0);
-			this->clicked_entry = NULL;
+			this->clicked_entry = nullptr;
 			this->SetDirty();
 		}
 	}
@@ -2357,9 +2339,9 @@ struct GameSettingsWindow : Window {
 	void OnQueryTextFinished(char *str) override
 	{
 		/* The user pressed cancel */
-		if (str == NULL) return;
+		if (str == nullptr) return;
 
-		assert(this->valuewindow_entry != NULL);
+		assert(this->valuewindow_entry != nullptr);
 		const SettingDesc *sd = this->valuewindow_entry->setting;
 
 		int32 value;
@@ -2412,7 +2394,7 @@ struct GameSettingsWindow : Window {
 			default:
 				if (widget < 0) {
 					/* Deal with drop down boxes on the panel. */
-					assert(this->valuedropdown_entry != NULL);
+					assert(this->valuedropdown_entry != nullptr);
 					const SettingDesc *sd = this->valuedropdown_entry->setting;
 					assert(sd->desc.flags & SGF_MULTISTRING);
 
@@ -2441,7 +2423,7 @@ struct GameSettingsWindow : Window {
 			 * the same dropdown button was clicked again, and then not open the dropdown again.
 			 * So, we only remember that it was closed, and process it on the next OnPaint, which is
 			 * after OnClick. */
-			assert(this->valuedropdown_entry != NULL);
+			assert(this->valuedropdown_entry != nullptr);
 			this->closing_dropdown = true;
 			this->SetDirty();
 		}
@@ -2466,8 +2448,8 @@ struct GameSettingsWindow : Window {
 		}
 		this->vscroll->SetCount(GetSettingsTree().Length() + this->warn_lines);
 
-		if (this->last_clicked != NULL && !GetSettingsTree().IsVisible(this->last_clicked)) {
-			this->SetDisplayedHelpText(NULL);
+		if (this->last_clicked != nullptr && !GetSettingsTree().IsVisible(this->last_clicked)) {
+			this->SetDisplayedHelpText(nullptr);
 		}
 
 		bool all_folded = true;
@@ -2496,7 +2478,7 @@ struct GameSettingsWindow : Window {
 	}
 };
 
-GameSettings *GameSettingsWindow::settings_ptr = NULL;
+GameSettings *GameSettingsWindow::settings_ptr = nullptr;
 
 static const NWidgetPart _nested_settings_selection_widgets[] = {
 	NWidget(NWID_HORIZONTAL),
@@ -2755,7 +2737,7 @@ struct CustomCurrencyWindow : Window {
 
 	void OnQueryTextFinished(char *str) override
 	{
-		if (str == NULL) return;
+		if (str == nullptr) return;
 
 		switch (this->query_widget) {
 			case WID_CC_RATE:
@@ -2832,7 +2814,7 @@ static const NWidgetPart _nested_cust_currency_widgets[] = {
 };
 
 static WindowDesc _cust_currency_desc(
-	WDP_CENTER, NULL, 0, 0,
+	WDP_CENTER, nullptr, 0, 0,
 	WC_CUSTOM_CURRENCY, WC_NONE,
 	0,
 	_nested_cust_currency_widgets, lengthof(_nested_cust_currency_widgets)

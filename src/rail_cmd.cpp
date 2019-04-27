@@ -52,8 +52,7 @@
 typedef std::vector<Train *> TrainList;
 
 RailtypeInfo _railtypes[RAILTYPE_END];
-RailType _sorted_railtypes[RAILTYPE_END];
-uint8 _sorted_railtypes_size;
+std::vector<RailType> _sorted_railtypes;
 TileIndex _rail_track_endtile; ///< The end of a rail track; as hidden return from the rail build/remove command for GUI purposes.
 RailTypes _railtypes_hidden_mask;
 
@@ -129,9 +128,9 @@ void ResolveRailTypeGUISprites(RailtypeInfo *rti)
  * @param second The railtype to compare.
  * @return True iff the first should be sorted before the second.
  */
-static int CDECL CompareRailTypes(const RailType *first, const RailType *second)
+static bool CompareRailTypes(const RailType &first, const RailType &second)
 {
-	return GetRailTypeInfo(*first)->sorting_order - GetRailTypeInfo(*second)->sorting_order;
+	return GetRailTypeInfo(first)->sorting_order < GetRailTypeInfo(second)->sorting_order;
 }
 
 /**
@@ -145,13 +144,13 @@ void InitRailTypes()
 		if (HasBit(rti->flags, RTF_HIDDEN)) SetBit(_railtypes_hidden_mask, rt);
 	}
 
-	_sorted_railtypes_size = 0;
+	_sorted_railtypes.clear();
 	for (RailType rt = RAILTYPE_BEGIN; rt != RAILTYPE_END; rt++) {
 		if (_railtypes[rt].label != 0 && !HasBit(_railtypes_hidden_mask, rt)) {
-			_sorted_railtypes[_sorted_railtypes_size++] = rt;
+			_sorted_railtypes.push_back(rt);
 		}
 	}
-	QSortT(_sorted_railtypes, _sorted_railtypes_size, CompareRailTypes);
+	std::sort(_sorted_railtypes.begin(), _sorted_railtypes.end(), CompareRailTypes);
 }
 
 /**
@@ -789,7 +788,7 @@ CommandCost CmdRemoveSingleRail(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 	 * so do not call GetTileOwner(tile) in any case here */
 	Owner owner = INVALID_OWNER;
 
-	Train *v = NULL;
+	Train *v = nullptr;
 
 	switch (GetTileType(tile)) {
 		case MP_ROAD: {
@@ -810,7 +809,7 @@ CommandCost CmdRemoveSingleRail(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 			if (flags & DC_EXEC) {
 				if (HasReservedTracks(tile, trackbit)) {
 					v = GetTrainForReservation(tile, track);
-					if (v != NULL) FreeTrainTrackReservation(v);
+					if (v != nullptr) FreeTrainTrackReservation(v);
 				}
 				owner = GetTileOwner(tile);
 				Company::Get(owner)->infrastructure.rail[GetRailType(tile)] -= LEVELCROSSING_TRACKBIT_FACTOR;
@@ -849,7 +848,7 @@ CommandCost CmdRemoveSingleRail(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 			if (flags & DC_EXEC) {
 				if (HasReservedTracks(tile, trackbit)) {
 					v = GetTrainForReservation(tile, track);
-					if (v != NULL) FreeTrainTrackReservation(v);
+					if (v != nullptr) FreeTrainTrackReservation(v);
 				}
 
 				owner = GetTileOwner(tile);
@@ -920,7 +919,7 @@ CommandCost CmdRemoveSingleRail(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 
 				if (HasReservedTracks(tile, trackbit)) {
 					v = GetTrainForReservation(tile, track);
-					if (v != NULL) FreeTrainTrackReservation(v);
+					if (v != nullptr) FreeTrainTrackReservation(v);
 				}
 
 				SetCustomBridgeHeadTrackBits(tile, future);
@@ -953,7 +952,7 @@ CommandCost CmdRemoveSingleRail(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 			YapfNotifyTrackLayoutChange(tile, track);
 		}
 
-		if (v != NULL) TryPathReserve(v, true);
+		if (v != nullptr) TryPathReserve(v, true);
 	}
 
 	_rail_track_endtile = tile;
@@ -1459,13 +1458,13 @@ CommandCost CmdBuildSingleSignal(TileIndex tile, DoCommandFlag flags, uint32 p1,
 	}
 
 	if (flags & DC_EXEC) {
-		Train *v = NULL;
+		Train *v = nullptr;
 		/* The new/changed signal could block our path. As this can lead to
 		 * stale reservations, we clear the path reservation here and try
 		 * to redo it later on. */
 		if (HasReservedTracks(tile, TrackToTrackBits(track))) {
 			v = GetTrainForReservation(tile, track);
-			if (v != NULL) FreeTrainTrackReservation(v);
+			if (v != nullptr) FreeTrainTrackReservation(v);
 		}
 
 		if (!HasSignals(tile)) {
@@ -1549,7 +1548,7 @@ CommandCost CmdBuildSingleSignal(TileIndex tile, DoCommandFlag flags, uint32 p1,
 		MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
 		AddTrackToSignalBuffer(tile, track, _current_company);
 		YapfNotifyTrackLayoutChange(tile, track);
-		if (v != NULL) {
+		if (v != nullptr) {
 			/* Extend the train's path if it's not stopped or loading, or not at a safe position. */
 			if (!(((v->vehstatus & VS_STOPPED) && v->cur_speed == 0) || v->current_order.IsType(OT_LOADING)) ||
 					!IsSafeWaitingPosition(v, v->tile, v->GetVehicleTrackdir(), true, _settings_game.pf.forbid_90_deg)) {
@@ -1880,8 +1879,6 @@ CommandCost CmdRemoveSingleSignal(TileIndex tile, DoCommandFlag flags, uint32 p1
 		if (!HasSignalOnTrack(tile, track)) {
 			return_cmd_error(STR_ERROR_THERE_ARE_NO_SIGNALS);
 		}
-		CommandCost ret = EnsureNoTrainOnTrack(tile, track);
-		if (ret.Failed()) return ret;
 	}
 
 	/* Only water can remove signals from anyone */
@@ -1907,13 +1904,13 @@ CommandCost CmdRemoveSingleSignal(TileIndex tile, DoCommandFlag flags, uint32 p1
 			return CommandCost(EXPENSES_CONSTRUCTION, cost);
 		}
 
-		Train *v = NULL;
+		Train *v = nullptr;
 		if (HasReservedTracks(tile, TrackToTrackBits(track))) {
 			v = GetTrainForReservation(tile, track);
 		} else if (IsPbsSignal(GetSignalType(tile, track))) {
 			/* PBS signal, might be the end of a path reservation. */
 			Trackdir td = TrackToTrackdir(track);
-			for (int i = 0; v == NULL && i < 2; i++, td = ReverseTrackdir(td)) {
+			for (int i = 0; v == nullptr && i < 2; i++, td = ReverseTrackdir(td)) {
 				/* Only test the active signal side. */
 				if (!HasSignalOnTrackdir(tile, ReverseTrackdir(td))) continue;
 				TileIndex next = TileAddByDiagDir(tile, TrackdirToExitdir(td));
@@ -1939,7 +1936,7 @@ CommandCost CmdRemoveSingleSignal(TileIndex tile, DoCommandFlag flags, uint32 p1
 
 		AddTrackToSignalBuffer(tile, track, GetTileOwner(tile));
 		YapfNotifyTrackLayoutChange(tile, track);
-		if (v != NULL) TryPathReserve(v, false);
+		if (v != nullptr) TryPathReserve(v, false);
 
 		MarkTileDirtyByTile(tile, ZOOM_LVL_DRAW_MAP);
 	}
@@ -1973,12 +1970,12 @@ CommandCost CmdRemoveSignalTrack(TileIndex tile, DoCommandFlag flags, uint32 p1,
 /** Update power of train under which is the railtype being converted */
 static Vehicle *UpdateTrainPowerProc(Vehicle *v, void *data)
 {
-	if (v->type != VEH_TRAIN) return NULL;
+	if (v->type != VEH_TRAIN) return nullptr;
 
 	TrainList *affected_trains = static_cast<TrainList*>(data);
 	include(*affected_trains, Train::From(v)->First());
 
-	return NULL;
+	return nullptr;
 }
 
 /**
@@ -2054,7 +2051,7 @@ CommandCost CmdConvertRail(TileIndex tile, DoCommandFlag flags, uint32 p1, uint3
 			Track track;
 			while ((track = RemoveFirstTrack(&reserved)) != INVALID_TRACK) {
 				Train *v = GetTrainForReservation(tile, track);
-				if (v != NULL && !HasPowerOnRail(v->railtype, totype)) {
+				if (v != nullptr && !HasPowerOnRail(v->railtype, totype)) {
 					/* No power on new rail type, reroute. */
 					FreeTrainTrackReservation(v);
 					vehicles_affected.push_back(v);
@@ -2238,11 +2235,11 @@ static CommandCost RemoveTrainDepot(TileIndex tile, DoCommandFlag flags)
 		/* read variables before the depot is removed */
 		DiagDirection dir = GetRailDepotDirection(tile);
 		Owner owner = GetTileOwner(tile);
-		Train *v = NULL;
+		Train *v = nullptr;
 
 		if (HasDepotReservation(tile)) {
 			v = GetTrainForReservation(tile, DiagDirToDiagTrack(dir));
-			if (v != NULL) FreeTrainTrackReservation(v);
+			if (v != nullptr) FreeTrainTrackReservation(v);
 		}
 
 		Company::Get(owner)->infrastructure.rail[GetRailType(tile)]--;
@@ -2252,7 +2249,7 @@ static CommandCost RemoveTrainDepot(TileIndex tile, DoCommandFlag flags)
 		DoClearSquare(tile);
 		AddSideToSignalBuffer(tile, dir, owner);
 		YapfNotifyTrackLayoutChange(tile, DiagDirToDiagTrack(dir));
-		if (v != NULL) TryPathReserve(v, true);
+		if (v != nullptr) TryPathReserve(v, true);
 	}
 
 	return CommandCost(EXPENSES_CONSTRUCTION, _price[PR_CLEAR_DEPOT_TRAIN]);
@@ -2357,33 +2354,43 @@ void DrawSingleSignal(TileIndex tile, const RailtypeInfo *rti, Track track, Sign
 	uint x = TileX(tile) * TILE_SIZE + SignalPositions[side][pos].x;
 	uint y = TileY(tile) * TILE_SIZE + SignalPositions[side][pos].y;
 
-	SpriteID sprite = GetCustomSignalSprite(rti, tile, type, variant, condition);
-	bool is_custom_sprite = (sprite != 0);
-	if (sprite != 0) {
-		sprite += image;
+	SpriteID sprite;
+	bool is_custom_sprite;
+	if (type == SIGTYPE_PROG) {
+		if (variant == SIG_SEMAPHORE) {
+			sprite = SPR_PROGSIGNAL_BASE + image * 2 + condition;
+		} else {
+			sprite = SPR_PROGSIGNAL_BASE + 16 + image * 2 + condition;
+		}
+		extern int _progsig_grf_file_index;
+		is_custom_sprite = (int) GetOriginFileSlot(sprite) != _progsig_grf_file_index;
 	} else {
-		/* Normal electric signals are stored in a different sprite block than all other signals. */
-		sprite = (type == SIGTYPE_NORMAL && variant == SIG_ELECTRIC) ? SPR_ORIGINAL_SIGNALS_BASE : SPR_SIGNALS_BASE - 16;
-		sprite += type * 16 + variant * 64 + image * 2 + condition + (IsSignalSpritePBS(type) ? 64 : 0);
-	}
+		sprite = GetCustomSignalSprite(rti, tile, type, variant, condition);
+		is_custom_sprite = (sprite != 0);
+		if (sprite != 0) {
+			sprite += image;
+		} else {
+			/* Normal electric signals are stored in a different sprite block than all other signals. */
+			sprite = (type == SIGTYPE_NORMAL && variant == SIG_ELECTRIC) ? SPR_ORIGINAL_SIGNALS_BASE : SPR_SIGNALS_BASE - 16;
+			sprite += type * 16 + variant * 64 + image * 2 + condition + (IsSignalSpritePBS(type) ? 64 : 0);
+		}
 
-	if (type == SIGTYPE_PROG && variant == SIG_SEMAPHORE) {
-		sprite = SPR_PROGSIGNAL_BASE + image * 2 + condition;
-		is_custom_sprite = false;
-	} else if (type == SIGTYPE_PROG && variant == SIG_ELECTRIC) {
-		sprite = SPR_PROGSIGNAL_BASE + 16 + image * 2 + condition;
-		is_custom_sprite = false;
-	} else {
-		int origin_slot = GetOriginFileSlot(sprite);
-		extern int _first_user_grf_file_index;
-		extern int _opengfx_grf_file_index;
-		if (!is_custom_sprite) is_custom_sprite = origin_slot != _opengfx_grf_file_index && (origin_slot >= _first_user_grf_file_index);
+		if (!is_custom_sprite) {
+			int origin_slot = GetOriginFileSlot(sprite);
+			extern int _first_user_grf_file_index;
+			extern int _opengfx_grf_file_index;
+			is_custom_sprite = origin_slot != _opengfx_grf_file_index && (origin_slot >= _first_user_grf_file_index);
+		}
 	}
 
 	if (is_custom_sprite && show_restricted && _settings_client.gui.show_restricted_signal_default) {
 		/* Use duplicate sprite block, instead of GRF-specified signals */
-		sprite = (type == SIGTYPE_NORMAL && variant == SIG_ELECTRIC) ? SPR_DUP_ORIGINAL_SIGNALS_BASE : SPR_DUP_SIGNALS_BASE - 16;
-		sprite += type * 16 + variant * 64 + image * 2 + condition + (IsSignalSpritePBS(type) ? 64 : 0);
+		if (type == SIGTYPE_PROG) {
+			sprite += SPR_DUP_PROGSIGNAL_BASE - SPR_PROGSIGNAL_BASE;
+		} else {
+			sprite = (type == SIGTYPE_NORMAL && variant == SIG_ELECTRIC) ? SPR_DUP_ORIGINAL_SIGNALS_BASE : SPR_DUP_SIGNALS_BASE - 16;
+			sprite += type * 16 + variant * 64 + image * 2 + condition + (IsSignalSpritePBS(type) ? 64 : 0);
+		}
 		is_custom_sprite = false;
 	}
 
@@ -2407,7 +2414,7 @@ static void DrawSingleSignal(TileIndex tile, const RailtypeInfo *rti, Track trac
 	SignalType type       = GetSignalType(tile, track);
 	SignalVariant variant = GetSignalVariant(tile, track);
 
-	bool show_restricted = (variant == SIG_ELECTRIC) && IsRestrictedSignal(tile) && (GetExistingTraceRestrictProgram(tile, track) != NULL);
+	bool show_restricted = (variant == SIG_ELECTRIC) && IsRestrictedSignal(tile) && (GetExistingTraceRestrictProgram(tile, track) != nullptr);
 	DrawSingleSignal(tile, rti, track, condition, image, pos, type, variant, show_restricted);
 }
 
@@ -2575,7 +2582,7 @@ static const SubSprite _dual_track_halftile_sub_sprite[4] = {
 
 static inline void DrawTrackSprite(SpriteID sprite, PaletteID pal, const TileInfo *ti, Slope s)
 {
-	DrawGroundSprite(sprite, pal, NULL, 0, (ti->tileh & s) ? -8 : 0);
+	DrawGroundSprite(sprite, pal, nullptr, 0, (ti->tileh & s) ? -8 : 0);
 }
 
 static RailGroundType GetRailOrBridgeGroundType(TileInfo *ti) {
@@ -2611,7 +2618,7 @@ static void DrawTrackBitsOverlay(TileInfo *ti, TrackBits track, const RailtypeIn
 
 			image += SlopeToSpriteOffset(ti->tileh);
 
-			const SubSprite *sub = NULL;
+			const SubSprite *sub = nullptr;
 			if (draw_half_tile != CORNER_INVALID) sub = &(_halftile_sub_sprite[draw_half_tile]);
 			DrawGroundSprite(image, PAL_NONE, sub);
 		}
@@ -2758,7 +2765,7 @@ void DrawTrackBits(TileInfo *ti, TrackBits track, RailType rt, RailGroundType rg
 
 	SpriteID image;
 	PaletteID pal = PAL_NONE;
-	const SubSprite *sub = NULL;
+	const SubSprite *sub = nullptr;
 	bool junction = false;
 
 	if (halftile_corner != CORNER_INVALID) {
@@ -2868,10 +2875,10 @@ void DrawTrackBits(TileInfo *ti, TrackBits track, RailType rt, RailGroundType rg
 				DrawGroundSprite(_track_sloped_sprites[ti->tileh - 1] + rti->base_sprites.single_sloped - 20, PALETTE_CRASH);
 			}
 		}
-		if (pbs & TRACK_BIT_UPPER) DrawGroundSprite(rti->base_sprites.single_n, PALETTE_CRASH, NULL, 0, ti->tileh & SLOPE_N ? -(int)TILE_HEIGHT : 0);
-		if (pbs & TRACK_BIT_LOWER) DrawGroundSprite(rti->base_sprites.single_s, PALETTE_CRASH, NULL, 0, ti->tileh & SLOPE_S ? -(int)TILE_HEIGHT : 0);
-		if (pbs & TRACK_BIT_LEFT)  DrawGroundSprite(rti->base_sprites.single_w, PALETTE_CRASH, NULL, 0, ti->tileh & SLOPE_W ? -(int)TILE_HEIGHT : 0);
-		if (pbs & TRACK_BIT_RIGHT) DrawGroundSprite(rti->base_sprites.single_e, PALETTE_CRASH, NULL, 0, ti->tileh & SLOPE_E ? -(int)TILE_HEIGHT : 0);
+		if (pbs & TRACK_BIT_UPPER) DrawGroundSprite(rti->base_sprites.single_n, PALETTE_CRASH, nullptr, 0, ti->tileh & SLOPE_N ? -(int)TILE_HEIGHT : 0);
+		if (pbs & TRACK_BIT_LOWER) DrawGroundSprite(rti->base_sprites.single_s, PALETTE_CRASH, nullptr, 0, ti->tileh & SLOPE_S ? -(int)TILE_HEIGHT : 0);
+		if (pbs & TRACK_BIT_LEFT)  DrawGroundSprite(rti->base_sprites.single_w, PALETTE_CRASH, nullptr, 0, ti->tileh & SLOPE_W ? -(int)TILE_HEIGHT : 0);
+		if (pbs & TRACK_BIT_RIGHT) DrawGroundSprite(rti->base_sprites.single_e, PALETTE_CRASH, nullptr, 0, ti->tileh & SLOPE_E ? -(int)TILE_HEIGHT : 0);
 	}
 
 	if (IsValidCorner(halftile_corner) && (draw_half_tile == halftile_corner || draw_half_tile == CORNER_INVALID)) {
@@ -2891,7 +2898,7 @@ void DrawTrackBits(TileInfo *ti, TrackBits track, RailType rt, RailGroundType rg
 
 		if (_game_mode != GM_MENU && _settings_client.gui.show_track_reservation && HasReservedTracks(ti->tile, CornerToTrackBits(halftile_corner))) {
 			static const byte _corner_to_track_sprite[] = {3, 1, 2, 0};
-			DrawGroundSprite(_corner_to_track_sprite[halftile_corner] + rti->base_sprites.single_n, PALETTE_CRASH, NULL, 0, -(int)TILE_HEIGHT);
+			DrawGroundSprite(_corner_to_track_sprite[halftile_corner] + rti->base_sprites.single_n, PALETTE_CRASH, nullptr, 0, -(int)TILE_HEIGHT);
 		}
 	}
 }
@@ -3577,7 +3584,7 @@ static VehicleEnterTileStatus VehicleEnter_Track(Vehicle *u, TileIndex tile, int
 			v->LeaveStation();
 			/* Only advance to next order if we are loading at the current one */
 			const Order *order = v->GetOrder(v->cur_implicit_order_index);
-			if (order != NULL && order->IsType(OT_GOTO_STATION) && order->GetDestination() == v->last_station_visited) {
+			if (order != nullptr && order->IsType(OT_GOTO_STATION) && order->GetDestination() == v->last_station_visited) {
 				v->IncrementImplicitOrderIndex();
 			}
 		}
@@ -3618,7 +3625,7 @@ static VehicleEnterTileStatus VehicleEnter_Track(Vehicle *u, TileIndex tile, int
 			v->track = TRACK_BIT_DEPOT,
 			v->vehstatus |= VS_HIDDEN; // hide it
 			v->direction = ReverseDir(v->direction);
-			if (v->Next() == NULL) VehicleEnterDepot(v->First());
+			if (v->Next() == nullptr) VehicleEnterDepot(v->First());
 			v->tile = tile;
 
 			InvalidateWindowData(WC_VEHICLE_DEPOT, v->tile);
@@ -3627,7 +3634,7 @@ static VehicleEnterTileStatus VehicleEnter_Track(Vehicle *u, TileIndex tile, int
 	} else if (fract_coord_leave == fract_coord) {
 		if (DiagDirToDir(dir) == v->direction) {
 			/* leave the depot? */
-			if ((v = v->Next()) != NULL) {
+			if ((v = v->Next()) != nullptr) {
 				v->vehstatus &= ~VS_HIDDEN;
 				v->track = (DiagDirToAxis(dir) == AXIS_X ? TRACK_BIT_X : TRACK_BIT_Y);
 			}
@@ -3695,7 +3702,7 @@ static CommandCost TestAutoslopeOnRailTile(TileIndex tile, uint flags, int z_old
  */
 static Vehicle *EnsureNoShipProc(Vehicle *v, void *data)
 {
-	return v->type == VEH_SHIP ? v : NULL;
+	return v->type == VEH_SHIP ? v : nullptr;
 }
 
 static CommandCost TerraformTile_Track(TileIndex tile, DoCommandFlag flags, int z_new, Slope tileh_new)
@@ -3708,7 +3715,7 @@ static CommandCost TerraformTile_Track(TileIndex tile, DoCommandFlag flags, int 
 		bool was_water = (GetRailGroundType(tile) == RAIL_GROUND_WATER && IsSlopeWithOneCornerRaised(tileh_old));
 
 		/* Allow clearing the water only if there is no ship */
-		if (was_water && HasVehicleOnPos(tile, NULL, &EnsureNoShipProc)) return_cmd_error(STR_ERROR_SHIP_IN_THE_WAY);
+		if (was_water && HasVehicleOnPos(tile, nullptr, &EnsureNoShipProc)) return_cmd_error(STR_ERROR_SHIP_IN_THE_WAY);
 
 		if (was_water && _game_mode != GM_EDITOR && !_settings_game.construction.enable_remove_water && !(flags & DC_ALLOW_REMOVE_WATER)) return_cmd_error(STR_ERROR_CAN_T_BUILD_ON_WATER);
 
@@ -3753,14 +3760,14 @@ extern const TileTypeProcs _tile_type_rail_procs = {
 	DrawTile_Track,           // draw_tile_proc
 	GetSlopePixelZ_Track,     // get_slope_z_proc
 	ClearTile_Track,          // clear_tile_proc
-	NULL,                     // add_accepted_cargo_proc
+	nullptr,                     // add_accepted_cargo_proc
 	GetTileDesc_Track,        // get_tile_desc_proc
 	GetTileTrackStatus_Track, // get_tile_track_status_proc
 	ClickTile_Track,          // click_tile_proc
-	NULL,                     // animate_tile_proc
+	nullptr,                     // animate_tile_proc
 	TileLoop_Track,           // tile_loop_proc
 	ChangeTileOwner_Track,    // change_tile_owner_proc
-	NULL,                     // add_produced_cargo_proc
+	nullptr,                     // add_produced_cargo_proc
 	VehicleEnter_Track,       // vehicle_enter_tile_proc
 	GetFoundation_Track,      // get_foundation_proc
 	TerraformTile_Track,      // terraform_tile_proc

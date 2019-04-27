@@ -206,23 +206,6 @@ bool GetClipboardContents(char *buffer, const char *last)
 }
 #endif
 
-uint GetCPUCoreCount()
-{
-	uint count = 1;
-#if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
-	if (MacOSVersionIsAtLeast(10, 5, 0)) {
-		count = (uint)[ [ NSProcessInfo processInfo ] activeProcessorCount ];
-	} else
-#endif
-	{
-#if (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5)
-		count = MPProcessorsScheduled();
-#endif
-	}
-
-	return count;
-}
-
 /**
  * Check if a font is a monospace font.
  * @param name Name of the font.
@@ -232,7 +215,7 @@ bool IsMonospaceFont(CFStringRef name)
 {
 	NSFont *font = [ NSFont fontWithName:(__bridge NSString *)name size:0.0f ];
 
-	return font != NULL ? [ font isFixedPitch ] : false;
+	return font != nullptr ? [ font isFixedPitch ] : false;
 }
 
 /**
@@ -248,7 +231,7 @@ void MacOSSetThreadName(const char *name)
 #endif
 
 	NSThread *cur = [ NSThread currentThread ];
-	if (cur != NULL && [ cur respondsToSelector:@selector(setName:) ]) {
+	if (cur != nullptr && [ cur respondsToSelector:@selector(setName:) ]) {
 		[ cur performSelector:@selector(setName:) withObject:[ NSString stringWithUTF8String:name ] ];
 	}
 }

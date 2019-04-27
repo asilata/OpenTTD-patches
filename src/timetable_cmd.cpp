@@ -19,7 +19,6 @@
 #include "settings_type.h"
 #include "cmd_helper.h"
 #include "company_base.h"
-#include "core/sort_func.hpp"
 #include "settings_type.h"
 #include "scope.h"
 
@@ -86,7 +85,7 @@ static void ChangeTimetable(Vehicle *v, VehicleOrderID order_number, uint32 val,
 	v->orders.list->UpdateTotalDuration(total_delta);
 	v->orders.list->UpdateTimetableDuration(timetable_delta);
 
-	for (v = v->FirstShared(); v != NULL; v = v->NextShared()) {
+	for (v = v->FirstShared(); v != nullptr; v = v->NextShared()) {
 		if (v->cur_real_order_index == order_number && v->current_order.Equals(*order)) {
 			switch (mtf) {
 				case MTF_WAIT_TIME:
@@ -143,14 +142,14 @@ CommandCost CmdChangeTimetable(TileIndex tile, DoCommandFlag flags, uint32 p1, u
 	VehicleID veh = GB(p1, 0, 20);
 
 	Vehicle *v = Vehicle::GetIfValid(veh);
-	if (v == NULL || !v->IsPrimaryVehicle()) return CMD_ERROR;
+	if (v == nullptr || !v->IsPrimaryVehicle()) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(v->owner);
 	if (ret.Failed()) return ret;
 
 	VehicleOrderID order_number = GB(p1, 20, 8);
 	Order *order = v->GetOrder(order_number);
-	if (order == NULL || order->IsType(OT_IMPLICIT)) return CMD_ERROR;
+	if (order == nullptr || order->IsType(OT_IMPLICIT)) return CMD_ERROR;
 
 	ModifyTimetableFlags mtf = Extract<ModifyTimetableFlags, 28, 3>(p1);
 	if (mtf >= MTF_END) return CMD_ERROR;
@@ -286,7 +285,7 @@ CommandCost CmdBulkChangeTimetable(TileIndex tile, DoCommandFlag flags, uint32 p
 	VehicleID veh = GB(p1, 0, 20);
 
 	Vehicle *v = Vehicle::GetIfValid(veh);
-	if (v == NULL || !v->IsPrimaryVehicle()) return CMD_ERROR;
+	if (v == nullptr || !v->IsPrimaryVehicle()) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(v->owner);
 	if (ret.Failed()) return ret;
@@ -299,7 +298,7 @@ CommandCost CmdBulkChangeTimetable(TileIndex tile, DoCommandFlag flags, uint32 p
 	if (flags & DC_EXEC) {
 		for (VehicleOrderID order_number = 0; order_number < v->GetNumOrders(); order_number++) {
 			Order *order = v->GetOrder(order_number);
-			if (order == NULL || order->IsType(OT_IMPLICIT)) continue;
+			if (order == nullptr || order->IsType(OT_IMPLICIT)) continue;
 
 			uint32 new_p1 = p1;
 			SB(new_p1, 20, 8, order_number);
@@ -325,7 +324,7 @@ CommandCost CmdSetVehicleOnTime(TileIndex tile, DoCommandFlag flags, uint32 p1, 
 	VehicleID veh = GB(p1, 0, 20);
 
 	Vehicle *v = Vehicle::GetIfValid(veh);
-	if (v == NULL || !v->IsPrimaryVehicle() || v->orders.list == NULL) return CMD_ERROR;
+	if (v == nullptr || !v->IsPrimaryVehicle() || v->orders.list == nullptr) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(v->owner);
 	if (ret.Failed()) return ret;
@@ -342,15 +341,12 @@ CommandCost CmdSetVehicleOnTime(TileIndex tile, DoCommandFlag flags, uint32 p1, 
  * Order vehicles based on their timetable. The vehicles will be sorted in order
  * they would reach the first station.
  *
- * @param ap First Vehicle pointer.
- * @param bp Second Vehicle pointer.
+ * @param a First Vehicle pointer.
+ * @param b Second Vehicle pointer.
  * @return Comparison value.
  */
-static int CDECL VehicleTimetableSorter(Vehicle * const *ap, Vehicle * const *bp)
+static bool VehicleTimetableSorter(Vehicle * const &a, Vehicle * const &b)
 {
-	const Vehicle *a = *ap;
-	const Vehicle *b = *bp;
-
 	VehicleOrderID a_order = a->cur_real_order_index;
 	VehicleOrderID b_order = b->cur_real_order_index;
 	int j = (int)b_order - (int)a_order;
@@ -368,15 +364,15 @@ static int CDECL VehicleTimetableSorter(Vehicle * const *ap, Vehicle * const *bp
 
 	/* First check the order index that accounted for loading, then just the raw one. */
 	int i = (int)b_order - (int)a_order;
-	if (i != 0) return i;
-	if (j != 0) return j;
+	if (i != 0) return i < 0;
+	if (j != 0) return j < 0;
 
 	/* Look at the time we spent in this order; the higher, the closer to its destination. */
 	i = b->current_order_time - a->current_order_time;
-	if (i != 0) return i;
+	if (i != 0) return i < 0;
 
 	/* If all else is equal, use some unique index to sort it the same way. */
-	return b->unitnumber - a->unitnumber;
+	return b->unitnumber < a->unitnumber;
 }
 
 /**
@@ -396,7 +392,7 @@ CommandCost CmdSetTimetableStart(TileIndex tile, DoCommandFlag flags, uint32 p1,
 	bool timetable_all = HasBit(p1, 20);
 	Vehicle *v = Vehicle::GetIfValid(GB(p1, 0, 20));
 	uint16 sub_ticks = GB(p1, 21, 11);
-	if (v == NULL || !v->IsPrimaryVehicle() || v->orders.list == NULL) return CMD_ERROR;
+	if (v == nullptr || !v->IsPrimaryVehicle() || v->orders.list == nullptr) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(v->owner);
 	if (ret.Failed()) return ret;
@@ -410,7 +406,7 @@ CommandCost CmdSetTimetableStart(TileIndex tile, DoCommandFlag flags, uint32 p1,
 		std::vector<Vehicle *> vehs;
 
 		if (timetable_all) {
-			for (Vehicle *w = v->orders.list->GetFirstSharedVehicle(); w != NULL; w = w->NextShared()) {
+			for (Vehicle *w = v->orders.list->GetFirstSharedVehicle(); w != nullptr; w = w->NextShared()) {
 				vehs.push_back(w);
 			}
 		} else {
@@ -418,10 +414,10 @@ CommandCost CmdSetTimetableStart(TileIndex tile, DoCommandFlag flags, uint32 p1,
 		}
 
 		int total_duration = v->orders.list->GetTimetableTotalDuration();
-		int num_vehs = vehs.size();
+		int num_vehs = (uint)vehs.size();
 
 		if (num_vehs >= 2) {
-			QSortT(vehs.data(), vehs.size(), &VehicleTimetableSorter);
+			std::sort(vehs.begin(), vehs.end(), &VehicleTimetableSorter);
 		}
 
 		int idx = vehs.begin() - std::find(vehs.begin(), vehs.end(), v);
@@ -465,7 +461,7 @@ CommandCost CmdAutofillTimetable(TileIndex tile, DoCommandFlag flags, uint32 p1,
 	VehicleID veh = GB(p1, 0, 20);
 
 	Vehicle *v = Vehicle::GetIfValid(veh);
-	if (v == NULL || !v->IsPrimaryVehicle() || v->orders.list == NULL) return CMD_ERROR;
+	if (v == nullptr || !v->IsPrimaryVehicle() || v->orders.list == nullptr) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(v->owner);
 	if (ret.Failed()) return ret;
@@ -489,7 +485,7 @@ CommandCost CmdAutofillTimetable(TileIndex tile, DoCommandFlag flags, uint32 p1,
 			ClrBit(v->vehicle_flags, VF_AUTOFILL_PRES_WAIT_TIME);
 		}
 
-		for (Vehicle *v2 = v->FirstShared(); v2 != NULL; v2 = v2->NextShared()) {
+		for (Vehicle *v2 = v->FirstShared(); v2 != nullptr; v2 = v2->NextShared()) {
 			if (v2 != v) {
 				/* Stop autofilling; only one vehicle at a time can perform autofill */
 				ClrBit(v2->vehicle_flags, VF_AUTOFILL_TIMETABLE);
@@ -519,13 +515,13 @@ CommandCost CmdAutomateTimetable(TileIndex index, DoCommandFlag flags, uint32 p1
 	VehicleID veh = GB(p1, 0, 20);
 
 	Vehicle *v = Vehicle::GetIfValid(veh);
-	if (v == NULL || !v->IsPrimaryVehicle()) return CMD_ERROR;
+	if (v == nullptr || !v->IsPrimaryVehicle()) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(v->owner);
 	if (ret.Failed()) return ret;
 
 	if (flags & DC_EXEC) {
-		for (Vehicle *v2 = v->FirstShared(); v2 != NULL; v2 = v2->NextShared()) {
+		for (Vehicle *v2 = v->FirstShared(); v2 != nullptr; v2 = v2->NextShared()) {
 			if (HasBit(p2, 0)) {
 				/* Automated timetable. Set flags and clear current times. */
 				SetBit(v2->vehicle_flags, VF_AUTOMATE_TIMETABLE);
@@ -556,7 +552,7 @@ CommandCost CmdAutomateTimetable(TileIndex index, DoCommandFlag flags, uint32 p1
 		}
 		if (!HasBit(p2, 0) && !HasBit(p2, 1)) {
 			OrderList *orders = v->orders.list;
-			if (orders != NULL) {
+			if (orders != nullptr) {
 				for (int i = 0; i < orders->GetNumOrders(); i++) {
 					ChangeTimetable(v, i, 0, MTF_WAIT_TIME, false);
 					ChangeTimetable(v, i, 0, MTF_TRAVEL_TIME, false);
@@ -583,13 +579,13 @@ CommandCost CmdTimetableSeparation(TileIndex tile, DoCommandFlag flags, uint32 p
 	VehicleID veh = GB(p1, 0, 20);
 
 	Vehicle *v = Vehicle::GetIfValid(veh);
-	if (v == NULL || !v->IsPrimaryVehicle()) return CMD_ERROR;
+	if (v == nullptr || !v->IsPrimaryVehicle()) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(v->owner);
 	if (ret.Failed()) return ret;
 
 	if (flags & DC_EXEC) {
-		for (Vehicle *v2 = v->FirstShared(); v2 != NULL; v2 = v2->NextShared()) {
+		for (Vehicle *v2 = v->FirstShared(); v2 != nullptr; v2 = v2->NextShared()) {
 			if (HasBit(p2, 0)) {
 				SetBit(v2->vehicle_flags, VF_TIMETABLE_SEPARATION);
 			} else {
@@ -630,7 +626,7 @@ int TimeToFinishOrder(Vehicle *v, int n)
 	Order *order = v->GetOrder(n);
 	int wait_time   = order->GetWaitTime();
 	int travel_time = order->GetTravelTime();
-	assert(order != NULL);
+	assert(order != nullptr);
 	if (!IsOrderUsableForSeparation(order)) return -1;
 	if ((v->cur_real_order_index == n) && (v->last_station_visited == order->GetDestination())) {
 		if (v->current_loading_time > 0) {
@@ -681,10 +677,10 @@ int SeparationBetween(Vehicle *v1, Vehicle *v2)
 void UpdateSeparationOrder(Vehicle *v_start)
 {
 	/* First check if we have a vehicle ahead, and if not search for one. */
-	if (v_start->AheadSeparation() == NULL) {
+	if (v_start->AheadSeparation() == nullptr) {
 		v_start->InitSeparation();
 	}
-	if (v_start->AheadSeparation() == NULL) {
+	if (v_start->AheadSeparation() == nullptr) {
 		return;
 	}
 	/* Switch positions if necessary. */
@@ -791,7 +787,7 @@ void UpdateVehicleTimetable(Vehicle *v, bool travelling)
 	});
 
 	VehicleOrderID first_manual_order = 0;
-	for (Order *o = v->GetFirstOrder(); o != NULL && o->IsType(OT_IMPLICIT); o = o->next) {
+	for (Order *o = v->GetFirstOrder(); o != nullptr && o->IsType(OT_IMPLICIT); o = o->next) {
 		++first_manual_order;
 	}
 
@@ -818,7 +814,7 @@ void UpdateVehicleTimetable(Vehicle *v, bool travelling)
 		/* If the lateness is set by scheduled dispatch above, do not reset */
 		if(!HasBit(v->vehicle_flags, VF_SCHEDULED_DISPATCH)) v->lateness_counter = 0;
 		if (HasBit(v->vehicle_flags, VF_TIMETABLE_SEPARATION)) UpdateSeparationOrder(v);
-		for (v = v->FirstShared(); v != NULL; v = v->NextShared()) {
+		for (v = v->FirstShared(); v != nullptr; v = v->NextShared()) {
 			SetWindowDirty(WC_VEHICLE_TIMETABLE, v->index);
 		}
 		return;
@@ -919,7 +915,7 @@ void UpdateVehicleTimetable(Vehicle *v, bool travelling)
 			/* Possible jam, clear time and restart timetable for all vehicles.
 			 * Otherwise we risk trains blocking 1-lane stations for long times. */
 			ChangeTimetable(v, v->cur_timetable_order_index, 0, travel_field ? MTF_TRAVEL_TIME : MTF_WAIT_TIME, true);
-			for (Vehicle *v2 = v->FirstShared(); v2 != NULL; v2 = v2->NextShared()) {
+			for (Vehicle *v2 = v->FirstShared(); v2 != nullptr; v2 = v2->NextShared()) {
 				v2->ClearSeparation();
 				ClrBit(v2->vehicle_flags, VF_TIMETABLE_STARTED);
 				SetWindowDirty(WC_VEHICLE_TIMETABLE, v2->index);
@@ -994,7 +990,7 @@ void UpdateVehicleTimetable(Vehicle *v, bool travelling)
 		}
 	}
 
-	for (v = v->FirstShared(); v != NULL; v = v->NextShared()) {
+	for (v = v->FirstShared(); v != nullptr; v = v->NextShared()) {
 		SetWindowDirty(WC_VEHICLE_TIMETABLE, v->index);
 	}
 }

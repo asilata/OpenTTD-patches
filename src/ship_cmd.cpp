@@ -155,7 +155,7 @@ static const Depot *FindClosestShipDepot(const Vehicle *v, uint max_distance)
 {
 	/* Find the closest depot */
 	const Depot *depot;
-	const Depot *best_depot = NULL;
+	const Depot *best_depot = nullptr;
 	/* If we don't have a maximum distance, i.e. distance = 0,
 	 * we want to find any depot so the best distance of no
 	 * depot must be more than any correct distance. On the
@@ -194,7 +194,7 @@ static void CheckIfShipNeedsService(Vehicle *v)
 
 	const Depot *depot = FindClosestShipDepot(v, max_distance);
 
-	if (depot == NULL) {
+	if (depot == nullptr) {
 		if (v->current_order.IsType(OT_GOTO_DEPOT)) {
 			v->current_order.MakeDummy();
 			SetWindowWidgetDirty(WC_VEHICLE_VIEW, v->index, WID_VV_START_STOP);
@@ -344,7 +344,7 @@ void Ship::UpdateDeltaXY()
  */
 static Vehicle *EnsureNoVisibleShipProc(Vehicle *v, void *data)
 {
-	return v->type == VEH_SHIP && (v->vehstatus & VS_HIDDEN) == 0 ? v : NULL;
+	return v->type == VEH_SHIP && (v->vehstatus & VS_HIDDEN) == 0 ? v : nullptr;
 }
 
 static bool CheckShipLeaveDepot(Ship *v)
@@ -370,7 +370,7 @@ static bool CheckShipLeaveDepot(Ship *v)
 
 	/* Don't leave depot if another vehicle is already entering/leaving */
 	/* This helps avoid CPU load if many ships are set to start at the same time */
-	if (HasVehicleOnPos(v->tile, NULL, &EnsureNoVisibleShipProc)) return true;
+	if (HasVehicleOnPos(v->tile, nullptr, &EnsureNoVisibleShipProc)) return true;
 
 	TileIndex tile = v->tile;
 	Axis axis = GetShipDepotAxis(tile);
@@ -496,8 +496,8 @@ static Track ChooseShipTrack(Ship *v, TileIndex tile, DiagDirection enterdir, Tr
 	bool path_found = true;
 	Track track;
 
-	if (v->dest_tile == 0 || DistanceManhattan(tile, v->dest_tile) > SHIP_MAX_ORDER_DISTANCE + 5) {
-		/* No destination or destination too far, don't invoke pathfinder. */
+	if (v->dest_tile == 0) {
+		/* No destination, don't invoke pathfinder. */
 		track = TrackBitsToTrack(v->state);
 		if (!IsDiagonalTrack(track)) track = TrackToOppositeTrack(track);
 		if (!HasBit(tracks, track)) track = FindFirstTrack(tracks);
@@ -538,8 +538,6 @@ static Track ChooseShipTrack(Ship *v, TileIndex tile, DiagDirection enterdir, Tr
 static inline TrackBits GetAvailShipTracks(TileIndex tile, DiagDirection dir, Trackdir trackdir)
 {
 	TrackBits tracks = GetTileShipTrackStatus(tile) & DiagdirReachesTracks(dir);
-
-	if (_settings_game.pf.forbid_90_deg) tracks &= ~TrackCrossesTracks(TrackdirToTrack(trackdir));
 
 	return tracks;
 }
@@ -590,19 +588,19 @@ struct ShipCollideChecker {
 /** Helper function for collision avoidance. */
 static Vehicle *FindShipOnTile(Vehicle *v, void *data)
 {
-	if (v->type != VEH_SHIP) return NULL;
+	if (v->type != VEH_SHIP) return nullptr;
 
 	ShipCollideChecker *scc = (ShipCollideChecker*)data;
 
 	/* Don't detect vehicles on different parallel tracks. */
 	TrackBits bits = scc->track_bits | Ship::From(v)->state;
-	if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) return NULL;
+	if (bits == TRACK_BIT_HORZ || bits == TRACK_BIT_VERT) return nullptr;
 
 	/* Don't detect ships passing on aquaduct. */
-	if (abs(v->z_pos - scc->v->z_pos) >= 8) return NULL;
+	if (abs(v->z_pos - scc->v->z_pos) >= 8) return nullptr;
 
 	/* Only requested tiles are checked. avoid desync. */
-	if (TileVirtXY(v->x_pos, v->y_pos) != scc->search_tile) return NULL;
+	if (TileVirtXY(v->x_pos, v->y_pos) != scc->search_tile) return nullptr;
 
 	return v;
 }
@@ -1043,10 +1041,10 @@ bool Ship::FindClosestDepot(TileIndex *location, DestinationID *destination, boo
 {
 	const Depot *depot = FindClosestShipDepot(this, 0);
 
-	if (depot == NULL) return false;
+	if (depot == nullptr) return false;
 
-	if (location    != NULL) *location    = depot->xy;
-	if (destination != NULL) *destination = depot->index;
+	if (location    != nullptr) *location    = depot->xy;
+	if (destination != nullptr) *destination = depot->index;
 
 	return true;
 }

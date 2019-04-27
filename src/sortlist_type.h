@@ -14,7 +14,6 @@
 
 #include "core/enum_type.hpp"
 #include "core/bitmath_func.hpp"
-#include "core/sort_func.hpp"
 #include "core/smallvec_type.hpp"
 #include "date_type.h"
 
@@ -49,8 +48,8 @@ struct Filtering {
 template <typename T, typename F = const char*>
 class GUIList : public std::vector<T> {
 public:
-	typedef int CDECL SortFunction(const T*, const T*); ///< Signature of sort function.
-	typedef bool CDECL FilterFunction(const T*, F);     ///< Signature of filter function.
+	typedef bool SortFunction(const T&, const T&);  ///< Signature of sort function.
+	typedef bool CDECL FilterFunction(const T*, F); ///< Signature of filter function.
 
 protected:
 	SortFunction * const *sort_func_list;     ///< the sort criteria functions
@@ -81,8 +80,8 @@ protected:
 
 public:
 	GUIList() :
-		sort_func_list(NULL),
-		filter_func_list(NULL),
+		sort_func_list(nullptr),
+		filter_func_list(nullptr),
 		flags(VL_FIRST_SORT),
 		sort_type(0),
 		filter_type(0),
@@ -270,11 +269,11 @@ public:
 		if (this->flags & VL_FIRST_SORT) {
 			CLRBITS(this->flags, VL_FIRST_SORT);
 
-			QSortT(std::vector<T>::data(), std::vector<T>::size(), compare, desc);
+			std::sort(std::vector<T>::begin(), std::vector<T>::end(), [&](const T &a, const T &b) { return desc ? compare(b, a) : compare(a, b); });
 			return true;
 		}
 
-		GSortT(std::vector<T>::data(), std::vector<T>::size(), compare, desc);
+		std::sort(std::vector<T>::begin(), std::vector<T>::end(), [&](const T &a, const T &b) { return desc ? compare(b, a) : compare(a, b); });
 		return true;
 	}
 
@@ -296,7 +295,7 @@ public:
 	 */
 	bool Sort()
 	{
-		assert(this->sort_func_list != NULL);
+		assert(this->sort_func_list != nullptr);
 		return this->Sort(this->sort_func_list[this->sort_type]);
 	}
 
@@ -367,7 +366,7 @@ public:
 	 */
 	bool Filter(F filter_data)
 	{
-		if (this->filter_func_list == NULL) return false;
+		if (this->filter_func_list == nullptr) return false;
 		return this->Filter(this->filter_func_list[this->filter_type], filter_data);
 	}
 

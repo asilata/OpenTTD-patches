@@ -110,7 +110,7 @@ Station::~Station()
 
 	for (CargoID c = 0; c < NUM_CARGO; ++c) {
 		LinkGraph *lg = LinkGraph::GetIfValid(this->goods[c].link_graph);
-		if (lg == NULL) continue;
+		if (lg == nullptr) continue;
 
 		for (NodeID node = 0; node < lg->Size(); ++node) {
 			Station *st = Station::Get((*lg)[node].Station());
@@ -168,7 +168,7 @@ Station::~Station()
 	CargoPacket::InvalidateAllFrom(this->index);
 
 	_station_kdtree.Remove(this->index);
-	_viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeStation(this->index));
+	if (_viewport_sign_kdtree_valid) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeStation(this->index, this->viewport_sign_kdtree_pt));
 }
 
 
@@ -191,7 +191,7 @@ RoadStop *Station::GetPrimaryRoadStop(const RoadVehicle *v) const
 {
 	RoadStop *rs = this->GetPrimaryRoadStop(v->IsBus() ? ROADSTOP_BUS : ROADSTOP_TRUCK);
 
-	for (; rs != NULL; rs = rs->next) {
+	for (; rs != nullptr; rs = rs->next) {
 		/* The vehicle cannot go to this roadstop (different roadtype) */
 		if ((GetRoadTypes(rs->xy) & v->compatible_roadtypes) == ROADTYPES_NONE) continue;
 		/* The vehicle is articulated and can therefore not go to a standard road stop. */
@@ -332,13 +332,13 @@ uint Station::GetCatchmentRadius() const
 	uint ret = CA_NONE;
 
 	if (_settings_game.station.modified_catchment) {
-		if (this->bus_stops          != NULL)         ret = max<uint>(ret, CA_BUS);
-		if (this->truck_stops        != NULL)         ret = max<uint>(ret, CA_TRUCK);
+		if (this->bus_stops          != nullptr)         ret = max<uint>(ret, CA_BUS);
+		if (this->truck_stops        != nullptr)         ret = max<uint>(ret, CA_TRUCK);
 		if (this->train_station.tile != INVALID_TILE) ret = max<uint>(ret, CA_TRAIN);
-		if (this->docks              != NULL)         ret = max<uint>(ret, CA_DOCK);
+		if (this->docks              != nullptr)         ret = max<uint>(ret, CA_DOCK);
 		if (this->airport.tile       != INVALID_TILE) ret = max<uint>(ret, this->airport.GetSpec()->catchment);
 	} else {
-		if (this->bus_stops != NULL || this->truck_stops != NULL || this->train_station.tile != INVALID_TILE || this->docks != NULL || this->airport.tile != INVALID_TILE) {
+		if (this->bus_stops != nullptr || this->truck_stops != nullptr || this->train_station.tile != INVALID_TILE || this->docks != nullptr || this->airport.tile != INVALID_TILE) {
 			ret = CA_UNMODIFIED;
 		}
 	}
@@ -369,7 +369,7 @@ Rect Station::GetCatchmentRectUsingRadius(uint catchment_radius) const
 
 bool Station::IsDockingTile(TileIndex tile) const
 {
-	for (const Dock *d = this->docks; d != NULL; d = d->next) {
+	for (const Dock *d = this->docks; d != nullptr; d = d->next) {
 		if (tile == d->GetDockingTile()) return true;
 	}
 	return false;
@@ -378,7 +378,7 @@ bool Station::IsDockingTile(TileIndex tile) const
 bool Station::IsWithinRangeOfDockingTile(TileIndex tile, uint max_distance) const
 {
 	if (DistanceManhattan(this->xy, tile) > _settings_game.station.station_spread + max_distance) return false;
-	for (const Dock *d = this->docks; d != NULL; d = d->next) {
+	for (const Dock *d = this->docks; d != nullptr; d = d->next) {
 		if (DistanceManhattan(d->GetDockingTile(), tile) <= max_distance) return true;
 	}
 	return false;
@@ -444,10 +444,10 @@ void Station::RecomputeCatchment()
 		this->catchment_tiles.Reset();
 		return;
 	}
-	this->catchment_tiles.Initialize(GetCatchmentRect());
 
-	if (!_settings_game.station.serve_neutral_industries && this->industry != NULL) {
+	if (!_settings_game.station.serve_neutral_industries && this->industry != nullptr) {
 		/* Station is associated with an industry, so we only need to deliver to that industry. */
+		this->catchment_tiles.Initialize(this->industry->location);
 		TILE_AREA_LOOP(tile, this->industry->location) {
 			if (IsTileType(tile, MP_INDUSTRY) && GetIndustryIndex(tile) == this->industry->index) {
 				this->catchment_tiles.SetTile(tile);
@@ -463,6 +463,8 @@ void Station::RecomputeCatchment()
 		return;
 	}
 
+	this->catchment_tiles.Initialize(GetCatchmentRect());
+
 	/* Loop finding all station tiles */
 	TileArea ta(TileXY(this->rect.left, this->rect.top), TileXY(this->rect.right, this->rect.bottom));
 	TILE_AREA_LOOP(tile, ta) {
@@ -472,7 +474,7 @@ void Station::RecomputeCatchment()
 		if (r == CA_NONE) continue;
 
 		/* This tile sub-loop doesn't need to test any tiles, they are simply added to the catchment set. */
-		TileArea ta2(TileXY(max<int>(TileX(tile) - r, 0), max<int>(TileY(tile) - r, 0)), TileXY(min<int>(TileX(tile) + r, MapMaxX()), min<int>(TileY(tile) + r, MapMaxY())));
+		TileArea ta2 = TileArea(tile, 1, 1).Expand(r);
 		TILE_AREA_LOOP(tile2, ta2) this->catchment_tiles.SetTile(tile2);
 	}
 
@@ -487,7 +489,7 @@ void Station::RecomputeCatchment()
 			Industry *i = Industry::GetByTile(tile);
 
 			/* Ignore industry if it has a neutral station. It already can't be this station. */
-			if (!_settings_game.station.serve_neutral_industries && i->neutral_station != NULL) continue;
+			if (!_settings_game.station.serve_neutral_industries && i->neutral_station != nullptr) continue;
 
 			i->stations_near.insert(this);
 

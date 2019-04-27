@@ -25,7 +25,7 @@
 /* static */ bool ScriptEngine::IsValidEngine(EngineID engine_id)
 {
 	const Engine *e = ::Engine::GetIfValid(engine_id);
-	if (e == NULL || !e->IsEnabled()) return false;
+	if (e == nullptr || !e->IsEnabled()) return false;
 
 	/* AIs have only access to engines they can purchase or still have in use.
 	 * Deity has access to all engined that will be or were available ever. */
@@ -36,12 +36,12 @@
 /* static */ bool ScriptEngine::IsBuildable(EngineID engine_id)
 {
 	const Engine *e = ::Engine::GetIfValid(engine_id);
-	return e != NULL && ::IsEngineBuildable(engine_id, e->type, ScriptObject::GetCompany());
+	return e != nullptr && ::IsEngineBuildable(engine_id, e->type, ScriptObject::GetCompany());
 }
 
 /* static */ char *ScriptEngine::GetName(EngineID engine_id)
 {
-	if (!IsValidEngine(engine_id)) return NULL;
+	if (!IsValidEngine(engine_id)) return nullptr;
 
 	::SetDParam(0, engine_id);
 	return GetString(STR_ENGINE_NAME);
@@ -256,9 +256,6 @@
 	if (!IsValidEngine(engine_id)) return 0;
 
 	switch (GetVehicleType(engine_id)) {
-		case ScriptVehicle::VT_WATER:
-			return _settings_game.pf.pathfinder_for_ships != VPF_NPF ? 129 : 0;
-
 		case ScriptVehicle::VT_AIR:
 			return ::Engine::Get(engine_id)->GetRange() * ::Engine::Get(engine_id)->GetRange();
 

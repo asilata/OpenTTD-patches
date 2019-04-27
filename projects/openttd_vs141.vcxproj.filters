@@ -103,6 +103,9 @@
     <Filter Include="Btree containers">
       <UniqueIdentifier>{c76ff9f1-1e62-46d8-8d55-000000000033}</UniqueIdentifier>
     </Filter>
+    <Filter Include="MinGW threading">
+      <UniqueIdentifier>{c76ff9f1-1e62-46d8-8d55-000000000034}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\tbtr_template_gui_main.cpp">
@@ -1420,9 +1423,6 @@
       <Filter>Core Source Code</Filter>
     </ClInclude>
     <ClInclude Include="..\src\core\smallvec_type.hpp">
-      <Filter>Core Source Code</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\core\sort_func.hpp">
       <Filter>Core Source Code</Filter>
     </ClInclude>
     <ClInclude Include="..\src\core\string_compare_type.hpp">
@@ -3258,12 +3258,9 @@
     <ClCompile Include="..\src\os\windows\win32.cpp">
       <Filter>Windows files</Filter>
     </ClCompile>
-    <ClInclude Include="..\src\thread\thread.h">
+    <ClInclude Include="..\src\thread.h">
       <Filter>Threading</Filter>
     </ClInclude>
-    <ClCompile Include="..\src\thread\thread_win32.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
     <ClInclude Include="..\src\tracerestrict.h">
       <Filter>Threading</Filter>
     </ClInclude>

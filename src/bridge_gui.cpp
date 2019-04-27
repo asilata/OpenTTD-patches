@@ -96,21 +96,21 @@ private:
 	Scrollbar *vscroll;
 
 	/** Sort the bridges by their index */
-	static int CDECL BridgeIndexSorter(const BuildBridgeData *a, const BuildBridgeData *b)
+	static bool BridgeIndexSorter(const BuildBridgeData &a, const BuildBridgeData &b)
 	{
-		return a->index - b->index;
+		return a.index < b.index;
 	}
 
 	/** Sort the bridges by their price */
-	static int CDECL BridgePriceSorter(const BuildBridgeData *a, const BuildBridgeData *b)
+	static bool BridgePriceSorter(const BuildBridgeData &a, const BuildBridgeData &b)
 	{
-		return a->cost - b->cost;
+		return a.cost < b.cost;
 	}
 
 	/** Sort the bridges by their maximum speed */
-	static int CDECL BridgeSpeedSorter(const BuildBridgeData *a, const BuildBridgeData *b)
+	static bool BridgeSpeedSorter(const BuildBridgeData &a, const BuildBridgeData &b)
 	{
-		return a->spec->speed - b->spec->speed;
+		return a.spec->speed < b.spec->speed;
 	}
 
 	void BuildBridge(uint8 i)
@@ -156,7 +156,7 @@ public:
 		this->bridges->NeedResort();
 		this->SortBridgeList();
 
-		this->vscroll->SetCount(bl->size());
+		this->vscroll->SetCount((uint)bl->size());
 	}
 
 	~BuildBridgeWindow()
@@ -398,7 +398,7 @@ void ShowBuildBridgeWindow(TileIndex start, TileIndex end, TransportType transpo
 
 	const bool query_per_bridge_type = ret.Failed() && (ret.GetErrorMessage() == STR_ERROR_BRIDGE_TOO_LOW_FOR_STATION || ret.GetErrorMessage() == STR_ERROR_BRIDGE_PILLARS_OBSTRUCT_STATION);
 
-	GUIBridgeList *bl = NULL;
+	GUIBridgeList *bl = nullptr;
 	if (ret.Failed()) {
 		errmsg = ret.GetErrorMessage();
 	}
@@ -436,7 +436,7 @@ void ShowBuildBridgeWindow(TileIndex start, TileIndex end, TransportType transpo
 		}
 	}
 
-	if (bl != NULL && bl->size() != 0) {
+	if (bl != nullptr && bl->size() != 0) {
 		new BuildBridgeWindow(&_build_bridge_desc, start, end, type, bl);
 	} else {
 		delete bl;

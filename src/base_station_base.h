@@ -16,6 +16,7 @@
 #include "command_type.h"
 #include "viewport_type.h"
 #include "station_map.h"
+#include "core/geometry_type.hpp"
 
 typedef Pool<BaseStation, StationID, 32, 64000> StationPool;
 extern StationPool _station_pool;
@@ -75,6 +76,8 @@ struct BaseStation : StationPool::PoolItem<&_station_pool> {
 
 	TileArea train_station;         ///< Tile area the train 'station' part covers
 	StationRect rect;               ///< NOSAVE: Station spread out rectangle maintained by StationRect::xxx() functions
+
+	Point viewport_sign_kdtree_pt;  ///< NOSAVE: Viewport sign kd tree: saved point (for tree removals)
 
 	/**
 	 * Initialize the base station.
@@ -230,7 +233,7 @@ struct SpecializedStation : public BaseStation {
 	 */
 	static inline T *GetIfValid(size_t index)
 	{
-		return IsValidID(index) ? Get(index) : NULL;
+		return IsValidID(index) ? Get(index) : nullptr;
 	}
 
 	/**
@@ -267,7 +270,7 @@ struct SpecializedStation : public BaseStation {
 };
 
 #define FOR_ALL_BASE_STATIONS_OF_TYPE(name, var) \
-	for (size_t station_index = 0; var = NULL, station_index < name::GetPoolSize(); station_index++) \
-		if ((var = name::GetIfValid(station_index)) != NULL)
+	for (size_t station_index = 0; var = nullptr, station_index < name::GetPoolSize(); station_index++) \
+		if ((var = name::GetIfValid(station_index)) != nullptr)
 
 #endif /* BASE_STATION_BASE_H */

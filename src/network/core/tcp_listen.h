@@ -54,13 +54,13 @@ public:
 
 			/* Check if the client is banned */
 			bool banned = false;
-			for (char *entry : _network_ban_list) {
-				banned = address.IsInNetmask(entry);
+			for (const auto &entry : _network_ban_list) {
+				banned = address.IsInNetmask(entry.c_str());
 				if (banned) {
 					Packet p(Tban_packet);
 					p.PrepareToSend();
 
-					DEBUG(net, 1, "[%s] Banned ip tried to join (%s), refused", Tsocket::GetName(), entry);
+					DEBUG(net, 1, "[%s] Banned ip tried to join (%s), refused", Tsocket::GetName(), entry.c_str());
 
 					if (send(s, (const char*)p.buffer, p.size, 0) < 0) {
 						DEBUG(net, 0, "send failed with error %d", GET_LAST_ERROR());
@@ -116,7 +116,7 @@ public:
 		}
 
 		tv.tv_sec = tv.tv_usec = 0; // don't block at all.
-		if (select(FD_SETSIZE, &read_fd, &write_fd, NULL, &tv) < 0) return false;
+		if (select(FD_SETSIZE, &read_fd, &write_fd, nullptr, &tv) < 0) return false;
 
 		/* accept clients.. */
 		for (auto &s : sockets) {

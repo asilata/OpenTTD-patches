@@ -60,7 +60,7 @@ void CcPlaySound_SPLAT_WATER(const CommandCost &result, TileIndex tile, uint32 p
  * @param[out] tile_to   The tile till where to show a selection for the aqueduct.
  * @return The other end of the aqueduct, or otherwise a tile in line with the aqueduct to cause the right error message.
  */
-static TileIndex GetOtherAqueductEnd(TileIndex tile_from, TileIndex *tile_to = NULL)
+static TileIndex GetOtherAqueductEnd(TileIndex tile_from, TileIndex *tile_to = nullptr)
 {
 	int z;
 	DiagDirection dir = GetInclinedSlopeDirection(GetTileSlope(tile_from, &z));
@@ -83,7 +83,7 @@ static TileIndex GetOtherAqueductEnd(TileIndex tile_from, TileIndex *tile_to = N
 		if (length > max_length) break;
 
 		if (GetTileMaxZ(endtile) > z) {
-			if (tile_to != NULL) *tile_to = endtile;
+			if (tile_to != nullptr) *tile_to = endtile;
 			break;
 		}
 	}
@@ -162,7 +162,7 @@ struct BuildDocksToolbarWindow : Window {
 
 			case WID_DT_RIVER: // Build river button (in scenario editor)
 				if (_game_mode != GM_EDITOR && !_settings_game.construction.enable_build_river) return;
-				HandlePlacePushButton(this, WID_DT_RIVER, SPR_CURSOR_RIVER, HT_RECT);
+				HandlePlacePushButton(this, WID_DT_RIVER, SPR_CURSOR_RIVER, _game_mode == GM_EDITOR ? HT_RECT | HT_DIAGONAL : HT_RECT);
 				break;
 
 			case WID_DT_BUILD_AQUEDUCT: // Build aqueduct button
@@ -212,7 +212,7 @@ struct BuildDocksToolbarWindow : Window {
 				break;
 
 			case WID_DT_RIVER: // Build river button (in scenario editor)
-				VpStartPlaceSizing(tile, VPM_X_AND_Y, DDSP_CREATE_RIVER);
+				VpStartPlaceSizing(tile, (_game_mode == GM_EDITOR) ? VPM_X_AND_Y : VPM_X_OR_Y, DDSP_CREATE_RIVER);
 				break;
 
 			case WID_DT_BUILD_AQUEDUCT: // Build aqueduct button
@@ -239,7 +239,7 @@ struct BuildDocksToolbarWindow : Window {
 					DoCommandP(end_tile, start_tile, (_game_mode == GM_EDITOR && _ctrl_pressed) ? WATER_CLASS_SEA : WATER_CLASS_CANAL, CMD_BUILD_CANAL | CMD_MSG(STR_ERROR_CAN_T_BUILD_CANALS), CcPlaySound_SPLAT_WATER);
 					break;
 				case DDSP_CREATE_RIVER:
-					DoCommandP(end_tile, start_tile, WATER_CLASS_RIVER, CMD_BUILD_CANAL | CMD_MSG(STR_ERROR_CAN_T_PLACE_RIVERS), CcPlaySound_SPLAT_WATER);
+					DoCommandP(end_tile, start_tile, WATER_CLASS_RIVER | (_ctrl_pressed ? 1 << 2 : 0), CMD_BUILD_CANAL | CMD_MSG(STR_ERROR_CAN_T_PLACE_RIVERS), CcPlaySound_SPLAT_WATER);
 					break;
 
 				default: break;
@@ -288,7 +288,7 @@ static EventState DockToolbarGlobalHotkeys(int hotkey)
 {
 	if (_game_mode != GM_NORMAL) return ES_NOT_HANDLED;
 	Window *w = ShowBuildDocksToolbar();
-	if (w == NULL) return ES_NOT_HANDLED;
+	if (w == nullptr) return ES_NOT_HANDLED;
 	return w->OnHotkey(hotkey);
 }
 
@@ -343,11 +343,11 @@ static WindowDesc _build_docks_toolbar_desc(
  *
  * If the terraform toolbar is linked to the toolbar, that window is also opened.
  *
- * @return newly opened water toolbar, or NULL if the toolbar could not be opened.
+ * @return newly opened water toolbar, or nullptr if the toolbar could not be opened.
  */
 Window *ShowBuildDocksToolbar()
 {
-	if (!Company::IsValidID(_local_company)) return NULL;
+	if (!Company::IsValidID(_local_company)) return nullptr;
 
 	DeleteWindowByClass(WC_BUILD_TOOLBAR);
 	return AllocateWindowDescFront<BuildDocksToolbarWindow>(&_build_docks_toolbar_desc, TRANSPORT_WATER);
@@ -384,7 +384,7 @@ static WindowDesc _build_docks_scen_toolbar_desc(
 /**
  * Open the build water toolbar window for the scenario editor.
  *
- * @return newly opened water toolbar, or NULL if the toolbar could not be opened.
+ * @return newly opened water toolbar, or nullptr if the toolbar could not be opened.
  */
 Window *ShowBuildDocksScenToolbar()
 {
@@ -478,7 +478,7 @@ static const NWidgetPart _nested_build_dock_station_widgets[] = {
 };
 
 static WindowDesc _build_dock_station_desc(
-	WDP_AUTO, NULL, 0, 0,
+	WDP_AUTO, nullptr, 0, 0,
 	WC_BUILD_STATION, WC_BUILD_TOOLBAR,
 	WDF_CONSTRUCTION,
 	_nested_build_dock_station_widgets, lengthof(_nested_build_dock_station_widgets)
@@ -571,7 +571,7 @@ static const NWidgetPart _nested_build_docks_depot_widgets[] = {
 };
 
 static WindowDesc _build_docks_depot_desc(
-	WDP_AUTO, NULL, 0, 0,
+	WDP_AUTO, nullptr, 0, 0,
 	WC_BUILD_DEPOT, WC_BUILD_TOOLBAR,
 	WDF_CONSTRUCTION,
 	_nested_build_docks_depot_widgets, lengthof(_nested_build_docks_depot_widgets)

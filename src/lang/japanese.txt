@@ -1801,7 +1801,7 @@ STR_CHEAT_CHANGE_DATE_QUERY_CAPT                                :{WHITE}現在�
 STR_CHEAT_SETUP_PROD                                            :{LTBLUE}生産量変更: {ORANGE}{STRING}
 
 # Livery window
-STR_LIVERY_CAPTION                                              :{WHITE}コーポレートカラー
+STR_LIVERY_CAPTION                                              :{WHITE}{COMPANY} コーポレートカラー
 
 STR_LIVERY_GENERAL_TOOLTIP                                      :{BLACK}通常のコーポレートカラー(車両塗装色)を表示します
 STR_LIVERY_TRAIN_TOOLTIP                                        :{BLACK}列車の塗装色を表示します
@@ -3394,6 +3394,7 @@ STR_GROUP_DEFAULT_TRAINS                                        :グループ化
 STR_GROUP_DEFAULT_ROAD_VEHICLES                                 :グループ化されていない車両
 STR_GROUP_DEFAULT_SHIPS                                         :グループ化されていない船舶
 STR_GROUP_DEFAULT_AIRCRAFTS                                     :グループ化されていない航空機
+
 
 STR_GROUPS_CLICK_ON_GROUP_FOR_TOOLTIP                           :{BLACK}グループ - クリックするとこのグループに所属する全車両一覧を表示します。ドラック&ドロップで順序を並べ替えられます
 STR_GROUP_CREATE_TOOLTIP                                        :{BLACK}新規のグループを作成します

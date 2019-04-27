@@ -69,9 +69,9 @@ protected:
 	}
 
 	/** Sort story pages by order value. */
-	static int CDECL PageOrderSorter(const StoryPage * const *a, const StoryPage * const *b)
+	static bool PageOrderSorter(const StoryPage * const &a, const StoryPage * const &b)
 	{
-		return (*a)->sort_value - (*b)->sort_value;
+		return a->sort_value < b->sort_value;
 	}
 
 	/** (Re)Build story page element list. */
@@ -81,7 +81,7 @@ protected:
 			this->story_page_elements.clear();
 
 			const StoryPage *p = GetSelPage();
-			if (p != NULL) {
+			if (p != nullptr) {
 				const StoryPageElement *pe;
 				FOR_ALL_STORY_PAGE_ELEMENTS(pe) {
 					if (pe->page == p->index) {
@@ -98,9 +98,9 @@ protected:
 	}
 
 	/** Sort story page elements by order value. */
-	static int CDECL PageElementOrderSorter(const StoryPageElement * const *a, const StoryPageElement * const *b)
+	static bool PageElementOrderSorter(const StoryPageElement * const &a, const StoryPageElement * const &b)
 	{
-		return (*a)->sort_value - (*b)->sort_value;
+		return a->sort_value < b->sort_value;
 	}
 
 	/*
@@ -115,11 +115,11 @@ protected:
 
 	/**
 	 * Get instance of selected page.
-	 * @return Instance of selected page or NULL if no page is selected.
+	 * @return Instance of selected page or nullptr if no page is selected.
 	 */
 	StoryPage *GetSelPage() const
 	{
-		if (!_story_page_pool.IsValidID(selected_page_id)) return NULL;
+		if (!_story_page_pool.IsValidID(selected_page_id)) return nullptr;
 		return _story_page_pool.Get(selected_page_id);
 	}
 
@@ -170,7 +170,7 @@ protected:
 	{
 		/* Generate generic title if selected page have no custom title. */
 		StoryPage *page = this->GetSelPage();
-		if (page != NULL && page->title == NULL) {
+		if (page != nullptr && page->title == nullptr) {
 			SetDParam(0, GetSelPageNum() + 1);
 			GetString(selected_generic_title, STR_STORY_BOOK_GENERIC_PAGE_ITEM, lastof(selected_generic_title));
 		}
@@ -193,10 +193,10 @@ protected:
 
 		/* Find the last available page which is previous to the current selected page. */
 		const StoryPage *last_available;
-		last_available = NULL;
+		last_available = nullptr;
 		for (const StoryPage *p : this->story_pages) {
 			if (p->index == this->selected_page_id) {
-				if (last_available == NULL) return; // No previous page available.
+				if (last_available == nullptr) return; // No previous page available.
 				this->SetSelectedPage(last_available->index);
 				return;
 			}
@@ -228,14 +228,14 @@ protected:
 	/**
 	 * Builds the page selector drop down list.
 	 */
-	DropDownList *BuildDropDownList() const
+	DropDownList BuildDropDownList() const
 	{
-		DropDownList *list = new DropDownList();
+		DropDownList list;
 		uint16 page_num = 1;
 		for (const StoryPage *p : this->story_pages) {
 			bool current_page = p->index == this->selected_page_id;
-			DropDownListStringItem *item = NULL;
-			if (p->title != NULL) {
+			DropDownListStringItem *item = nullptr;
+			if (p->title != nullptr) {
 				item = new DropDownListCharStringItem(p->title, p->index, current_page);
 			} else {
 				/* No custom title => use a generic page title with page number. */
@@ -245,14 +245,8 @@ protected:
 				item = str_item;
 			}
 
-			list->push_back(item);
+			list.emplace_back(item);
 			page_num++;
-		}
-
-		/* Check if list is empty. */
-		if (list->size() == 0) {
-			delete list;
-			list = NULL;
 		}
 
 		return list;
@@ -276,12 +270,12 @@ protected:
 	uint GetHeadHeight(int max_width) const
 	{
 		StoryPage *page = this->GetSelPage();
-		if (page == NULL) return 0;
+		if (page == nullptr) return 0;
 		int height = 0;
 
 		/* Title lines */
 		height += FONT_HEIGHT_NORMAL; // Date always use exactly one line.
-		SetDParamStr(0, page->title != NULL ? page->title : this->selected_generic_title);
+		SetDParamStr(0, page->title != nullptr ? page->title : this->selected_generic_title);
 		height += GetStringHeight(STR_STORY_BOOK_TITLE, max_width);
 
 		return height;
@@ -298,7 +292,7 @@ protected:
 		switch (pe.type) {
 			case SPET_GOAL: {
 				Goal *g = Goal::Get((GoalID) pe.referenced_id);
-				if (g == NULL) return SPR_IMG_GOAL_BROKEN_REF;
+				if (g == nullptr) return SPR_IMG_GOAL_BROKEN_REF;
 				return g->completed ? SPR_IMG_GOAL_COMPLETED : SPR_IMG_GOAL;
 			}
 			case SPET_LOCATION:
@@ -342,7 +336,7 @@ protected:
 	uint GetContentHeight()
 	{
 		StoryPage *page = this->GetSelPage();
-		if (page == NULL) return 0;
+		if (page == nullptr) return 0;
 		int max_width = GetAvailablePageContentWidth();
 		uint element_vertical_dist = FONT_HEIGHT_NORMAL;
 
@@ -464,7 +458,7 @@ public:
 		switch (widget) {
 			case WID_SB_SEL_PAGE: {
 				StoryPage *page = this->GetSelPage();
-				SetDParamStr(0, page != NULL && page->title != NULL ? page->title : this->selected_generic_title);
+				SetDParamStr(0, page != nullptr && page->title != nullptr ? page->title : this->selected_generic_title);
 				break;
 			}
 			case WID_SB_CAPTION:
@@ -498,7 +492,7 @@ public:
 		if (widget != WID_SB_PAGE_PANEL) return;
 
 		StoryPage *page = this->GetSelPage();
-		if (page == NULL) return;
+		if (page == nullptr) return;
 
 		const int x = r.left + WD_FRAMETEXT_LEFT;
 		const int y = r.top + WD_FRAMETEXT_TOP;
@@ -524,7 +518,7 @@ public:
 		y_offset += line_height;
 
 		/* Title */
-		SetDParamStr(0, page->title != NULL ? page->title : this->selected_generic_title);
+		SetDParamStr(0, page->title != nullptr ? page->title : this->selected_generic_title);
 		y_offset = DrawStringMultiLine(0, right - x, y_offset, bottom - y, STR_STORY_BOOK_TITLE, TC_BLACK, SA_TOP | SA_HOR_CENTER);
 
 		/* Page elements */
@@ -539,8 +533,8 @@ public:
 
 				case SPET_GOAL: {
 					Goal *g = Goal::Get((GoalID) pe->referenced_id);
-					StringID string_id = g == NULL ? STR_STORY_BOOK_INVALID_GOAL_REF : STR_JUST_RAW_STRING;
-					if (g != NULL) SetDParamStr(0, g->text);
+					StringID string_id = g == nullptr ? STR_STORY_BOOK_INVALID_GOAL_REF : STR_JUST_RAW_STRING;
+					if (g != nullptr) SetDParamStr(0, g->text);
 					DrawActionElement(y_offset, right - x, line_height, GetPageElementSprite(*pe), string_id);
 					break;
 				}
@@ -573,7 +567,7 @@ public:
 				for (uint16 i = 0; i < this->story_pages.size(); i++) {
 					const StoryPage *s = this->story_pages[i];
 
-					if (s->title != NULL) {
+					if (s->title != nullptr) {
 						SetDParamStr(0, s->title);
 					} else {
 						SetDParamStr(0, this->selected_generic_title);
@@ -611,8 +605,8 @@ public:
 	{
 		switch (widget) {
 			case WID_SB_SEL_PAGE: {
-				DropDownList *list = this->BuildDropDownList();
-				if (list != NULL) {
+				DropDownList list = this->BuildDropDownList();
+				if (!list.empty()) {
 					/* Get the index of selected page. */
 					int selected = 0;
 					for (uint16 i = 0; i < this->story_pages.size(); i++) {
@@ -621,7 +615,7 @@ public:
 						selected++;
 					}
 
-					ShowDropDownList(this, list, selected, widget);
+					ShowDropDownList(this, std::move(list), selected, widget);
 				}
 				break;
 			}

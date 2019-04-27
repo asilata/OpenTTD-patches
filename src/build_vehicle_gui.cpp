@@ -100,57 +100,54 @@ static CargoID _engine_sort_last_cargo_criteria[] = {CF_ANY, CF_ANY, CF_ANY, CF_
 
 /**
  * Determines order of engines by engineID
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EngineNumberSorter(const EngineID *a, const EngineID *b)
+static bool EngineNumberSorter(const EngineID &a, const EngineID &b)
 {
-	int r = Engine::Get(*a)->list_position - Engine::Get(*b)->list_position;
+	int r = Engine::Get(a)->list_position - Engine::Get(b)->list_position;
 
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of engines by introduction date
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EngineIntroDateSorter(const EngineID *a, const EngineID *b)
+static bool EngineIntroDateSorter(const EngineID &a, const EngineID &b)
 {
-	const int va = Engine::Get(*a)->intro_date;
-	const int vb = Engine::Get(*b)->intro_date;
+	const int va = Engine::Get(a)->intro_date;
+	const int vb = Engine::Get(b)->intro_date;
 	const int r = va - vb;
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of engines by name
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EngineNameSorter(const EngineID *a, const EngineID *b)
+static bool EngineNameSorter(const EngineID &a, const EngineID &b)
 {
 	static EngineID last_engine[2] = { INVALID_ENGINE, INVALID_ENGINE };
 	static char     last_name[2][64] = { "\0", "\0" };
 
-	const EngineID va = *a;
-	const EngineID vb = *b;
-
-	if (va != last_engine[0]) {
-		last_engine[0] = va;
-		SetDParam(0, va);
+	if (a != last_engine[0]) {
+		last_engine[0] = a;
+		SetDParam(0, a);
 		GetString(last_name[0], STR_ENGINE_NAME, lastof(last_name[0]));
 	}
 
-	if (vb != last_engine[1]) {
-		last_engine[1] = vb;
-		SetDParam(0, vb);
+	if (b != last_engine[1]) {
+		last_engine[1] = b;
+		SetDParam(0, b);
 		GetString(last_name[1], STR_ENGINE_NAME, lastof(last_name[1]));
 	}
 
@@ -158,121 +155,121 @@ static int CDECL EngineNameSorter(const EngineID *a, const EngineID *b)
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of engines by reliability
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EngineReliabilitySorter(const EngineID *a, const EngineID *b)
+static bool EngineReliabilitySorter(const EngineID &a, const EngineID &b)
 {
-	const int va = Engine::Get(*a)->reliability;
-	const int vb = Engine::Get(*b)->reliability;
+	const int va = Engine::Get(a)->reliability;
+	const int vb = Engine::Get(b)->reliability;
 	const int r = va - vb;
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of engines by purchase cost
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EngineCostSorter(const EngineID *a, const EngineID *b)
+static bool EngineCostSorter(const EngineID &a, const EngineID &b)
 {
-	Money va = Engine::Get(*a)->GetCost();
-	Money vb = Engine::Get(*b)->GetCost();
+	Money va = Engine::Get(a)->GetCost();
+	Money vb = Engine::Get(b)->GetCost();
 	int r = ClampToI32(va - vb);
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of engines by speed
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EngineSpeedSorter(const EngineID *a, const EngineID *b)
+static bool EngineSpeedSorter(const EngineID &a, const EngineID &b)
 {
-	int va = Engine::Get(*a)->GetDisplayMaxSpeed();
-	int vb = Engine::Get(*b)->GetDisplayMaxSpeed();
+	int va = Engine::Get(a)->GetDisplayMaxSpeed();
+	int vb = Engine::Get(b)->GetDisplayMaxSpeed();
 	int r = va - vb;
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of engines by power
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EnginePowerSorter(const EngineID *a, const EngineID *b)
+static bool EnginePowerSorter(const EngineID &a, const EngineID &b)
 {
-	int va = Engine::Get(*a)->GetPower();
-	int vb = Engine::Get(*b)->GetPower();
+	int va = Engine::Get(a)->GetPower();
+	int vb = Engine::Get(b)->GetPower();
 	int r = va - vb;
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of engines by tractive effort
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EngineTractiveEffortSorter(const EngineID *a, const EngineID *b)
+static bool EngineTractiveEffortSorter(const EngineID &a, const EngineID &b)
 {
-	int va = Engine::Get(*a)->GetDisplayMaxTractiveEffort();
-	int vb = Engine::Get(*b)->GetDisplayMaxTractiveEffort();
+	int va = Engine::Get(a)->GetDisplayMaxTractiveEffort();
+	int vb = Engine::Get(b)->GetDisplayMaxTractiveEffort();
 	int r = va - vb;
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of engines by running costs
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EngineRunningCostSorter(const EngineID *a, const EngineID *b)
+static bool EngineRunningCostSorter(const EngineID &a, const EngineID &b)
 {
-	Money va = Engine::Get(*a)->GetRunningCost();
-	Money vb = Engine::Get(*b)->GetRunningCost();
+	Money va = Engine::Get(a)->GetRunningCost();
+	Money vb = Engine::Get(b)->GetRunningCost();
 	int r = ClampToI32(va - vb);
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of engines by running costs
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL EnginePowerVsRunningCostSorter(const EngineID *a, const EngineID *b)
+static bool EnginePowerVsRunningCostSorter(const EngineID &a, const EngineID &b)
 {
-	const Engine *e_a = Engine::Get(*a);
-	const Engine *e_b = Engine::Get(*b);
+	const Engine *e_a = Engine::Get(a);
+	const Engine *e_b = Engine::Get(b);
 
 	/* Here we are using a few tricks to get the right sort.
 	 * We want power/running cost, but since we usually got higher running cost than power and we store the result in an int,
@@ -286,79 +283,79 @@ static int CDECL EnginePowerVsRunningCostSorter(const EngineID *a, const EngineI
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /* Train sorting functions */
 
 /**
  * Determines order of train engines by capacity
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL TrainEngineCapacitySorter(const EngineID *a, const EngineID *b)
+static bool TrainEngineCapacitySorter(const EngineID &a, const EngineID &b)
 {
-	const RailVehicleInfo *rvi_a = RailVehInfo(*a);
-	const RailVehicleInfo *rvi_b = RailVehInfo(*b);
+	const RailVehicleInfo *rvi_a = RailVehInfo(a);
+	const RailVehicleInfo *rvi_b = RailVehInfo(b);
 
-	int va = GetTotalCapacityOfArticulatedParts(*a) * (rvi_a->railveh_type == RAILVEH_MULTIHEAD ? 2 : 1);
-	int vb = GetTotalCapacityOfArticulatedParts(*b) * (rvi_b->railveh_type == RAILVEH_MULTIHEAD ? 2 : 1);
+	int va = GetTotalCapacityOfArticulatedParts(a) * (rvi_a->railveh_type == RAILVEH_MULTIHEAD ? 2 : 1);
+	int vb = GetTotalCapacityOfArticulatedParts(b) * (rvi_b->railveh_type == RAILVEH_MULTIHEAD ? 2 : 1);
 	int r = va - vb;
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of train engines by engine / wagon
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL TrainEnginesThenWagonsSorter(const EngineID *a, const EngineID *b)
+static bool TrainEnginesThenWagonsSorter(const EngineID &a, const EngineID &b)
 {
-	int val_a = (RailVehInfo(*a)->railveh_type == RAILVEH_WAGON ? 1 : 0);
-	int val_b = (RailVehInfo(*b)->railveh_type == RAILVEH_WAGON ? 1 : 0);
+	int val_a = (RailVehInfo(a)->railveh_type == RAILVEH_WAGON ? 1 : 0);
+	int val_b = (RailVehInfo(b)->railveh_type == RAILVEH_WAGON ? 1 : 0);
 	int r = val_a - val_b;
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /* Road vehicle sorting functions */
 
 /**
  * Determines order of road vehicles by capacity
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL RoadVehEngineCapacitySorter(const EngineID *a, const EngineID *b)
+static bool RoadVehEngineCapacitySorter(const EngineID &a, const EngineID &b)
 {
-	int va = GetTotalCapacityOfArticulatedParts(*a);
-	int vb = GetTotalCapacityOfArticulatedParts(*b);
+	int va = GetTotalCapacityOfArticulatedParts(a);
+	int vb = GetTotalCapacityOfArticulatedParts(b);
 	int r = va - vb;
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /* Ship vehicle sorting functions */
 
 /**
  * Determines order of ships by capacity
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL ShipEngineCapacitySorter(const EngineID *a, const EngineID *b)
+static bool ShipEngineCapacitySorter(const EngineID &a, const EngineID &b)
 {
-	const Engine *e_a = Engine::Get(*a);
-	const Engine *e_b = Engine::Get(*b);
+	const Engine *e_a = Engine::Get(a);
+	const Engine *e_b = Engine::Get(b);
 
 	int va = e_a->GetDisplayDefaultCapacity();
 	int vb = e_b->GetDisplayDefaultCapacity();
@@ -366,21 +363,21 @@ static int CDECL ShipEngineCapacitySorter(const EngineID *a, const EngineID *b)
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /* Aircraft sorting functions */
 
 /**
  * Determines order of aircraft by cargo
- * @param *a first engine to compare
- * @param *b second engine to compare
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL AircraftEngineCargoSorter(const EngineID *a, const EngineID *b)
+static bool AircraftEngineCargoSorter(const EngineID &a, const EngineID &b)
 {
-	const Engine *e_a = Engine::Get(*a);
-	const Engine *e_b = Engine::Get(*b);
+	const Engine *e_a = Engine::Get(a);
+	const Engine *e_b = Engine::Get(b);
 
 	uint16 mail_a, mail_b;
 	int va = e_a->GetDisplayDefaultCapacity(&mail_a);
@@ -396,25 +393,25 @@ static int CDECL AircraftEngineCargoSorter(const EngineID *a, const EngineID *b)
 			return EngineNumberSorter(a, b);
 		}
 	}
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /**
  * Determines order of aircraft by range.
- * @param *a first engine to compare.
- * @param *b second engine to compare.
- * @return for descending order: returns < 0 if a < b and > 0 for a > b. Vice versa for ascending order and 0 for equal.
+ * @param a first engine to compare
+ * @param b second engine to compare
+ * @return for descending order: returns true if a < b. Vice versa for ascending order
  */
-static int CDECL AircraftRangeSorter(const EngineID *a, const EngineID *b)
+static bool AircraftRangeSorter(const EngineID &a, const EngineID &b)
 {
-	uint16 r_a = Engine::Get(*a)->GetRange();
-	uint16 r_b = Engine::Get(*b)->GetRange();
+	uint16 r_a = Engine::Get(a)->GetRange();
+	uint16 r_b = Engine::Get(b)->GetRange();
 
 	int r = r_a - r_b;
 
 	/* Use EngineID to sort instead since we want consistent sorting */
 	if (r == 0) return EngineNumberSorter(a, b);
-	return _engine_sort_direction ? -r : r;
+	return _engine_sort_direction ? r > 0 : r < 0;
 }
 
 /** Sort functions for the vehicle sort criteria, for each vehicle type. */
@@ -834,7 +831,7 @@ static int DrawAircraftPurchaseInfo(int left, int right, int y, EngineID engine_
  */
 static uint ShowAdditionalText(int left, int right, int y, EngineID engine)
 {
-	uint16 callback = GetVehicleCallback(CBID_VEHICLE_ADDITIONAL_TEXT, 0, 0, engine, NULL);
+	uint16 callback = GetVehicleCallback(CBID_VEHICLE_ADDITIONAL_TEXT, 0, 0, engine, nullptr);
 	if (callback == CALLBACK_FAILED || callback == 0x400) return y;
 	const GRFFile *grffile = Engine::Get(engine)->GetGRF();
 	if (callback > 0x400) {
@@ -1063,7 +1060,7 @@ struct BuildVehicleWindow : Window {
 		this->vehicle_type = type;
 		this->window_number = tile == INVALID_TILE ? (int)type : tile;
 		this->virtual_train_out = virtual_train_out;
-		this->virtual_train_mode = (virtual_train_out != NULL);
+		this->virtual_train_mode = (virtual_train_out != nullptr);
 		if (this->virtual_train_mode) this->window_number = 0;
 
 		this->sel_engine = INVALID_ENGINE;
@@ -1193,7 +1190,7 @@ struct BuildVehicleWindow : Window {
 
 		if (!this->listview_mode) {
 			/* Query for cost and refitted capacity */
-			CommandCost ret = DoCommand(this->window_number, this->sel_engine | (cargo << 24), 0, DC_QUERY_COST, GetCmdBuildVeh(this->vehicle_type), NULL);
+			CommandCost ret = DoCommand(this->window_number, this->sel_engine | (cargo << 24), 0, DC_QUERY_COST, GetCmdBuildVeh(this->vehicle_type), nullptr);
 			if (ret.Succeeded()) {
 				this->te.cost          = ret.GetCost() - e->GetCost();
 				this->te.capacity      = _returned_refit_capacity;
@@ -1329,7 +1326,7 @@ struct BuildVehicleWindow : Window {
 
 		this->eng_list.clear();
 
-		const Station *st = this->listview_mode ? NULL : Station::GetByTile(this->window_number);
+		const Station *st = this->listview_mode ? nullptr : Station::GetByTile(this->window_number);
 
 		/* Make list of all available planes.
 		 * Also check to see if the previously selected plane is still available,
@@ -1421,8 +1418,8 @@ struct BuildVehicleWindow : Window {
 				break;
 
 			case WID_BV_SHOW_HIDE: {
-				const Engine *e = (this->sel_engine == INVALID_ENGINE) ? NULL : Engine::Get(this->sel_engine);
-				if (e != NULL) {
+				const Engine *e = (this->sel_engine == INVALID_ENGINE) ? nullptr : Engine::Get(this->sel_engine);
+				if (e != nullptr) {
 					DoCommandP(0, 0, this->sel_engine | (e->IsHidden(_current_company) ? 0 : (1u << 31)), CMD_SET_VEHICLE_VISIBILITY);
 				}
 				break;
@@ -1499,8 +1496,8 @@ struct BuildVehicleWindow : Window {
 				break;
 
 			case WID_BV_SHOW_HIDE: {
-				const Engine *e = (this->sel_engine == INVALID_ENGINE) ? NULL : Engine::Get(this->sel_engine);
-				if (e != NULL && e->IsHidden(_local_company)) {
+				const Engine *e = (this->sel_engine == INVALID_ENGINE) ? nullptr : Engine::Get(this->sel_engine);
+				if (e != nullptr && e->IsHidden(_local_company)) {
 					SetDParam(0, STR_BUY_VEHICLE_TRAIN_SHOW_TOGGLE_BUTTON + this->vehicle_type);
 				} else {
 					SetDParam(0, STR_BUY_VEHICLE_TRAIN_HIDE_TOGGLE_BUTTON + this->vehicle_type);
@@ -1551,7 +1548,7 @@ struct BuildVehicleWindow : Window {
 	{
 		switch (widget) {
 			case WID_BV_LIST:
-				DrawEngineList(this->vehicle_type, r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, r.top + WD_FRAMERECT_TOP, &this->eng_list, this->vscroll->GetPosition(), min(this->vscroll->GetPosition() + this->vscroll->GetCapacity(), this->eng_list.size()), this->sel_engine, false, DEFAULT_GROUP);
+				DrawEngineList(this->vehicle_type, r.left + WD_FRAMERECT_LEFT, r.right - WD_FRAMERECT_RIGHT, r.top + WD_FRAMERECT_TOP, &this->eng_list, this->vscroll->GetPosition(), min(this->vscroll->GetPosition() + this->vscroll->GetCapacity(), (uint)this->eng_list.size()), this->sel_engine, false, DEFAULT_GROUP);
 				break;
 
 			case WID_BV_SORT_ASCENDING_DESCENDING:
@@ -1563,7 +1560,7 @@ struct BuildVehicleWindow : Window {
 	void OnPaint() override
 	{
 		this->GenerateBuildList();
-		this->vscroll->SetCount(this->eng_list.size());
+		this->vscroll->SetCount((uint)this->eng_list.size());
 
 		this->SetWidgetsDisabledState(this->sel_engine == INVALID_ENGINE, WID_BV_SHOW_HIDE, WID_BV_BUILD, WID_BV_RENAME, WIDGET_LIST_END);
 
@@ -1589,9 +1586,9 @@ struct BuildVehicleWindow : Window {
 
 	void OnQueryTextFinished(char *str) override
 	{
-		if (str == NULL) return;
+		if (str == nullptr) return;
 
-		DoCommandP(0, this->rename_engine, 0, CMD_RENAME_ENGINE | CMD_MSG(STR_ERROR_CAN_T_RENAME_TRAIN_TYPE + this->vehicle_type), NULL, str);
+		DoCommandP(0, this->rename_engine, 0, CMD_RENAME_ENGINE | CMD_MSG(STR_ERROR_CAN_T_RENAME_TRAIN_TYPE + this->vehicle_type), nullptr, str);
 	}
 
 	void OnDropdownSelect(int widget, int index) override
@@ -1626,9 +1623,9 @@ struct BuildVehicleWindow : Window {
 
 	void AddVirtualEngine(Train *toadd)
 	{
-		if (this->virtual_train_out == NULL) return;
+		if (this->virtual_train_out == nullptr) return;
 
-		if (*(this->virtual_train_out) == NULL) {
+		if (*(this->virtual_train_out) == nullptr) {
 			*(this->virtual_train_out) = toadd;
 		} else {
 			VehicleID target = (*(this->virtual_train_out))->GetLastUnit()->index;
@@ -1677,7 +1674,7 @@ void ShowBuildVehicleWindow(TileIndex tile, VehicleType type)
 
 	DeleteWindowById(WC_BUILD_VEHICLE, num);
 
-	new BuildVehicleWindow(&_build_vehicle_desc, tile, type, NULL);
+	new BuildVehicleWindow(&_build_vehicle_desc, tile, type, nullptr);
 }
 
 void ShowTemplateTrainBuildVehicleWindow(Train **virtual_train)

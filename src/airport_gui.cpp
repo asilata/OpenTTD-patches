@@ -161,7 +161,7 @@ static EventState AirportToolbarGlobalHotkeys(int hotkey)
 {
 	if (_game_mode != GM_NORMAL || !CanBuildVehicleInfrastructure(VEH_AIRCRAFT)) return ES_NOT_HANDLED;
 	Window *w = ShowBuildAirToolbar();
-	if (w == NULL) return ES_NOT_HANDLED;
+	if (w == nullptr) return ES_NOT_HANDLED;
 	return w->OnHotkey(hotkey);
 }
 
@@ -198,11 +198,11 @@ static WindowDesc _air_toolbar_desc(
  *
  * If the terraform toolbar is linked to the toolbar, that window is also opened.
  *
- * @return newly opened airport toolbar, or NULL if the toolbar could not be opened.
+ * @return newly opened airport toolbar, or nullptr if the toolbar could not be opened.
  */
 Window *ShowBuildAirToolbar()
 {
-	if (!Company::IsValidID(_local_company)) return NULL;
+	if (!Company::IsValidID(_local_company)) return nullptr;
 
 	DeleteWindowByClass(WC_BUILD_TOOLBAR);
 	return AllocateWindowDescFront<BuildAirToolbarWindow>(&_air_toolbar_desc, TRANSPORT_AIR);
@@ -214,12 +214,12 @@ class BuildAirportWindow : public PickerWindowBase {
 	Scrollbar *vscroll;
 
 	/** Build a dropdown list of available airport classes */
-	static DropDownList *BuildAirportClassDropDown()
+	static DropDownList BuildAirportClassDropDown()
 	{
-		DropDownList *list = new DropDownList();
+		DropDownList list;
 
 		for (uint i = 0; i < AirportClass::GetClassCount(); i++) {
-			list->push_back(new DropDownListStringItem(AirportClass::Get((AirportClassID)i)->name, i, false));
+			list.emplace_back(new DropDownListStringItem(AirportClass::Get((AirportClassID)i)->name, i, false));
 		}
 
 		return list;
